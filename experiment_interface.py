@@ -58,8 +58,8 @@ class ExperimentInterface:
         main_path_frame.pack()
 
         self.tk_main_path = tk.StringVar()
-        self.tk_main_path.set(_DEFAULT_MAIN_PATH)
-        self.main_path = _DEFAULT_MAIN_PATH 
+        self.tk_main_path.set(DEFAULT_MAIN_PATH)
+        self.main_path = DEFAULT_MAIN_PATH 
         main_path_entry = ttk.Entry(main_path_frame, textvariable=self.tk_main_path, width=40)
         main_path_entry.pack(side="left")  # Place the entry field on the left
 
@@ -828,8 +828,6 @@ def get_row_and_column_index_from_index(index, nb_items_total):
     # get the number of rows and columns, knowing that the number of columns and rows should be as close as possible
     nb_columns = int(int(np.sqrt(nb_items_total))/2+1)*2
     nb_rows = int(np.ceil(nb_items_total / nb_columns))
-    # if nb_rows < nb_columns:
-    #     nb_rows, nb_columns = nb_columns, nb_rows
     row_index = index // nb_columns
     column_index = index % nb_columns
     is_last_row = row_index == nb_rows-1
