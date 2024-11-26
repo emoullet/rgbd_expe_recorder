@@ -2,23 +2,20 @@ import csv
 import itertools
 import os
 import random
-import subprocess
 import tkinter as tk
 from tkinter import messagebox, ttk
-
-from i_grip import databases_utils as db
-from i_grip import Scene_refactored_multi as sc
-import ExperimentRecorder as erc
-# import ExperimentPreProcessor as epp
-# import ExperimentReplayer_refactored as erp
-# import ExperimentAnalyser_refactored as ea
 import threading
 import cv2
 import pandas as pd
 import numpy as np
 
-_DEFAULT_MAIN_PATH = "/home/emoullet/Documents/i-GRIP/DATA"
+import databases_utils as db
+import ExperimentRecorder as erc
+import ExperimentPreProcessor as epp
+import ExperimentReplayer as erp
+import ExperimentAnalyser as ea
 
+from config import SESSION_OPTIONS, MODES
             
 def get_row_and_column_index_from_index(index, nb_items_total):
     # get the number of rows and columns, knowing that the number of columns and rows should be as close as possible
@@ -35,11 +32,9 @@ def get_row_and_column_index_from_index(index, nb_items_total):
 
 class Experiment:
     #TODO : move option verbose in session class
-    SESSION_OPTIONS = ["Session 1: Offline recordings", "Session 2: Online, static objects", "Session 3: Online, moving objects"]
-    MODES = ["Recording", "Pre-processing", "Replay", "Analysis"]
     def __init__(self, name = None, win = None, mode=None) -> None:
-        if mode not in self.MODES:
-            raise ValueError(f"Mode {mode} not supported. Supported modes are {self.MODES}")
+        if mode not in MODES:
+            raise ValueError(f"Mode {mode} not supported. Supported modes are {MODES}")
         else:
             self.mode = mode
         self.name = name
@@ -58,8 +53,8 @@ class Experiment:
         
     def fetch_sessions(self):
         if self.mode == 'Recording':
-            self.sessions_indexes = range(1, len(self.SESSION_OPTIONS)+1)
-            return self.SESSION_OPTIONS
+            self.sessions_indexes = range(1, len(SESSION_OPTIONS)+1)
+            return SESSION_OPTIONS
         else:
             # list all folders from the experiment folder, directories only, begining with "Session_"
             self.session_folders = [f for f in os.listdir(self.path) if os.path.isdir(os.path.join(self.path, f)) and f.startswith("Session_")]        
@@ -71,7 +66,7 @@ class Experiment:
                 try:
                     session_index = int(session_folder.split("_")[1])
                     self.sessions_indexes.append(session_index)
-                    self.sessions_options.append(self.SESSION_OPTIONS[session_index - 1])
+                    self.sessions_options.append(SESSION_OPTIONS[session_index - 1])
                 except:
                     print(f"Session folder {session_folder} does not follow the naming convention 'Session_X', with X an integer")
             #TODO : return only sessions with participants
@@ -80,7 +75,7 @@ class Experiment:
     
     def set_session(self, selected_session):
         #find the index of the selected session in SESSION_OPTIONS
-        index = self.SESSION_OPTIONS.index(selected_session)
+        index = SESSION_OPTIONS.index(selected_session)
         # self.selected_session = self.sessions[index]
         self.selected_session = Session(self.path, self.sessions_indexes[index], mode = self.mode)
         return self.selected_session
@@ -285,11 +280,14 @@ class Session:
             self.experimental_parameters = {}
             with open(csv_path, "r") as csvfile:
                 reader = csv.reader(csvfile)
+                self.parameters_list = []
                 for row in reader:
                     param_type = row[0]
                     param_list = row[1:]
                     self.experimental_parameters[param_type] = param_list
+                    self.parameters_list.append(param_type)
             print(f"Experimental parameters read from '{csv_path}'")
+            print(f"Experimental parameters: \n{self.experimental_parameters}")
     
     def set_experimental_parameters(self, parameters):
         self.experimental_parameters = parameters
@@ -602,7 +600,10 @@ class Session:
                 return self.get_participant(participant_firstname, participant_surname, handedness, location)
             #update the databases
             date = pd.Timestamp.now()
-            self.participants_database.loc[len(self.participants_database)] = [pseudo, date, handedness, location, self.preselect_all_participants, False, False, False, False, False, False, 0]
+            print(f'database: {self.participants_database}')
+            new_data =  [pseudo, date, handedness, location, 0, False]
+            print(f"new_data: {new_data}")
+            self.participants_database.loc[len(self.participants_database)] = new_data
             print(f"self.participants_pseudos_database ici: {self.participants_pseudos_database}")
             self.participants_pseudos_database.loc[len(self.participants_pseudos_database)] = [participant_firstname, participant_surname, pseudo]
             print(f"self.participants_pseudos_database là: {self.participants_pseudos_database}")
@@ -810,7 +811,9 @@ class Participant:
         self.combinations_data = pd.DataFrame(combinations_list, columns=keys_list)
         self.missing_trials = []
         for index, row in self.combinations_data.iterrows():
-            trial_folder_name = f"trial_{index}_combi_{row['Objects']}_{row['Hands']}_{row['Grips']}_{row['Movement Types']}"
+            trial_folder_name = f"trial_{index}_combi"
+            for key, value in row.items():
+                trial_folder_name += f"_{value}"
             self.combinations_data.loc[index, 'Trial Folder'] = trial_folder_name
             self.combinations_data.loc[index, 'Trial Number'] = int(index+1)
             self.missing_trials.append(Trial(trial_folder_name, self.path, row, participant_pre_processing_path=self.pre_processing_path, participant_replay_path=self.replay_path, participant_analysis_path=self.analyse_path))
@@ -923,7 +926,7 @@ class Participant:
         print(f"Stopped {self.current_trial.label}")
         
     def display_task(self):
-        rotate = True
+        rotate = False
         while self.expe_running:
             imgs=[]
             for rec in self.expe_recorders:
@@ -1280,6 +1283,8 @@ class Participant:
         self.stop_experiment()
         
 class Trial:
+    
+    #TODO : adapt to the new instructions format
     def __init__(self, label, participant_path, combination:pd.DataFrame=None, participant_pre_processing_path = None, participant_replay_path = None, participant_analysis_path=None) -> None:
         self.label = label
         self.combination = combination
@@ -1607,28 +1612,29 @@ class Trial:
         return text
         
     def get_instructions_colored(self):
-        #TODO : add language selection
+        #TODO : adapt to the new instructions format
         print(f'Combination: {self.combination}')
-        mov_type = self.combination[self.combination_header[self.movement_type_ind]]
-        obj = self.combination[self.combination_header[self.obj_ind]]
-        hand = self.combination[self.combination_header[self.hand_ind]]
-        grip = self.combination[self.combination_header[self.grip_ind]]
-        intro = f" \n \n  \n \n  \n{self.instructions['intro']} \n \n \n"
-        t_obj = f"\t {self.instructions['object_intro']} "
-        t_hand = f"\t {self.instructions['hand_intro']} "
-        t_grip = f"\t {self.instructions['grip_intro']} "
-        t_obj_c = f"{self.instructions[obj]} \n \n"
-        t_hand_c = f"{self.instructions[hand]} \n \n"
-        t_grip_c = f"{self.instructions[grip]} \n \n"
-        t_mov_c = f"\t {self.instructions[mov_type]} \n \n"
-        text = [(intro, "intro"),
-                (t_mov_c, "mov_type"),
-                (t_hand,"normal"),
-                (t_hand_c, "hand"),
-                (t_grip, "normal"),
-                (t_grip_c, "grip"),
-                (t_obj, "normal"),
-                (t_obj_c, "object")]
+        # mov_type = self.combination[self.combination_header[self.movement_type_ind]]
+        # obj = self.combination[self.combination_header[self.obj_ind]]
+        # hand = self.combination[self.combination_header[self.hand_ind]]
+        # grip = self.combination[self.combination_header[self.grip_ind]]
+        # intro = f" \n \n  \n \n  \n{self.instructions['intro']} \n \n \n"
+        # t_obj = f"\t {self.instructions['object_intro']} "
+        # t_hand = f"\t {self.instructions['hand_intro']} "
+        # t_grip = f"\t {self.instructions['grip_intro']} "
+        # t_obj_c = f"{self.instructions[obj]} \n \n"
+        # t_hand_c = f"{self.instructions[hand]} \n \n"
+        # t_grip_c = f"{self.instructions[grip]} \n \n"
+        # t_mov_c = f"\t {self.instructions[mov_type]} \n \n"
+        # text = [(intro, "intro"),
+        #         (t_mov_c, "mov_type"),
+        #         (t_hand,"normal"),
+        #         (t_hand_c, "hand"),
+        #         (t_grip, "normal"),
+        #         (t_grip_c, "grip"),
+        #         (t_obj, "normal"),
+        #         (t_obj_c, "object")]
+        text = [(f"INSTRUCTIONS", "intro")]
                 
         return text
     def get_instructions_colored2(self):
@@ -1674,28 +1680,4 @@ class ProgressDisplay(ttk.Labelframe):
         if current_item is not None:
             self.current_item_text= current_item
         self.update()
-        
-def kill_gpu_processes():
-    # use the command nvidia-smi and then grep "grasp_int" and "python" to get the list of processes running on the gpu
-    # execute the command in a subprocess and get the output
-    try:
-        processes = subprocess.check_output("nvidia-smi | grep 'grasp_int' | grep 'python'", shell=True)
-        # split the output into lines
-        processes = processes.splitlines()
-        # get rid of the b' at the beginning of each line
-        processes = [str(process)[2:] for process in processes]
-        ids=[]
-        # loop over the lines
-        for process in processes:
-            # split the line into words and get the fifth word, which is the process id
-            id = process.split()[4]
-            ids.append(id)
-            # kill the process
-            kill_command = f"sudo kill -9 {id}"
-            subprocess.call(kill_command, shell=True)
-        print(f"Killed processes with ids {ids}")
-    except Exception as e:
-        print(f"No remnant processes found on the gpu")
-    
-if __name__ == "__main__":
-    kill_gpu_processes()
+

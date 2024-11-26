@@ -19,7 +19,7 @@ class ExperimentRecorder:
         self.fps = fps
         
         self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        self.rgbd_camera = RgbdCamera( device_id=device_id, detect_hands=False, resolution=resolution, fps=fps)
+        self.rgbd_camera = RgbdCamera( device_id=device_id,  resolution=resolution, fps=fps)
         self.device_data = self.rgbd_camera.get_device_data()
         res = self.device_data['resolution']
         # self.res = (res[0], res[1])
@@ -47,10 +47,10 @@ class ExperimentRecorder:
         self.new_rec=False
         self.end_rec = False
         while self.rgbd_camera.isOn():
-            success, img = self.rgbd_camera.next_frame()
+            success, img, map = self.rgbd_camera.next_frame()
             if not success:
                 continue
-            map = self.rgbd_camera.get_depth_map()
+            # map = self.rgbd_camera.get_depth_map()
             #cv2.imshow(f'view {self.device_id}',img)
 
             if self.new_rec:
@@ -95,6 +95,9 @@ class ExperimentRecorder:
         new_df['Timestamps'] = df['Timestamps']
         #save timestamps as csv
         new_df.to_pickle(path_timestamps, compression='gzip')
+        df_timestamps = pd.DataFrame()
+        df_timestamps['Timestamps'] = df['Timestamps']
+        df_timestamps.to_csv(self.path_timestamps_csv, index=False)
         print(f"Finished saving {path}")
 
 
@@ -106,7 +109,8 @@ class ExperimentRecorder:
         self.current_path= os.path.join(self.main_path, name)
         self.path_vid = os.path.join(self.current_path, f'{name}_cam_{self.cam_label}_video.avi')
         self.path_gzip = os.path.join(self.current_path,f'{name}_cam_{self.cam_label}_depth_map.gzip')
-        self.path_timestamps = os.path.join(self.current_path,f'{name}_cam_{self.cam_label}_timestamps.csv')
+        self.path_timestamps = os.path.join(self.current_path,f'{name}_cam_{self.cam_label}_timestamps.gzip')
+        self.path_timestamps_csv = os.path.join(self.current_path,f'{name}_cam_{self.cam_label}_timestamps.csv')
         #self.recorder = cv2.VideoWriter(self.path_vid, self.fourcc, 30.0,(1280,720))
         self.new_rec = True
 
@@ -119,7 +123,8 @@ class ExperimentRecorder:
         self.current_path= os.path.join(self.main_path, name)
         self.path_vid = os.path.join(self.current_path, f'{name}_cam_{self.cam_label}_video.avi')
         self.path_gzip = os.path.join(self.current_path,f'{name}_cam_{self.cam_label}_depth_map.gzip')
-        self.path_timestamps = os.path.join(self.current_path,f'{name}_cam_{self.cam_label}_timestamps.csv')
+        self.path_timestamps = os.path.join(self.current_path,f'{name}_cam_{self.cam_label}_timestamps.gzip')
+        self.path_timestamps_csv = os.path.join(self.current_path,f'{name}_cam_{self.cam_label}_timestamps.csv')
         self.new_rec = True
     
     def stop_record(self):

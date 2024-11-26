@@ -3,27 +3,21 @@ import shutil
 import tkinter as tk
 from tkinter import ttk, font
 from tkinter import filedialog, messagebox
-import multiprocessing
-# from ttkbootstrap import Style
 import pandas as pd
-# import ExperimentReplayer2 as erp
-# import Experiment as ex
-import Experiment as ex
-
-
-
 import argparse
 import cv2
 import numpy as np
 import depthai
 
+# import ExperimentReplayer2 as erp
+# import Experiment as ex
+import Experiment as ex
 
-_DEFAULT_MAIN_PATH = "/home/emoullet/Documents/Sara"
-
+from config import DEFAULT_MAIN_PATH
 
 class ExperimentInterface:
     def __init__(self,mode = None):     
-        self.name = f"i-GRIP {mode} Interface"
+        self.name = f"Sara's {mode} Interface"
         self.experiment = ex.Experiment(name = self.name, mode = mode)
         self.build_window(mode)
         self.params_separator = ';'
@@ -110,41 +104,30 @@ class ExperimentInterface:
         
         start_row = 0
 
-        objects_label = ttk.Label(self.parameters_frame, text="Objects")
+        objects_label = ttk.Label(self.parameters_frame, text="Distances")
         objects_label.grid(row = start_row + 0, column=0, padx=10)
 
         self.entry_list_objects = ttk.Entry(self.parameters_frame)
         self.entry_list_objects.grid(row = start_row + 0, column=1, padx=10)
 
-        hands_label = ttk.Label(self.parameters_frame, text="Hands")
+        hands_label = ttk.Label(self.parameters_frame, text="Angles")
         hands_label.grid(row = start_row + 0, column=2, padx=10)
 
         self.entry_list_hands = ttk.Entry(self.parameters_frame)
         self.entry_list_hands.grid(row = start_row + 0, column=3, padx=10)
 
-        grips_label = ttk.Label(self.parameters_frame, text="Grips")
-        grips_label.grid(row = start_row + 1, column=0, padx=10, pady=10)
-
-        self.entry_list_grips = ttk.Entry(self.parameters_frame)
-        self.entry_list_grips.grid(row = start_row + 1, column=1, padx=10, pady=10)
-
-        movement_types_label = ttk.Label(self.parameters_frame, text="Movement Types")
-        movement_types_label.grid(row = start_row + 1, column=2, padx=10, pady=10)
-
-        self.entry_list_movement_types = ttk.Entry(self.parameters_frame)
-        self.entry_list_movement_types.grid(row = start_row + 1, column=3, padx=10, pady=10)
 
         # repetition_frame = ttk.Frame(self.session_frame)
         # repetition_frame.grid(row=start_row+2, columnspan=2)
 
         nb_repetition_label = ttk.Label(self.parameters_frame, text="Number of repetitions")
-        nb_repetition_label.grid(row = start_row + 2,column=0, columnspan=2, padx=10, pady=10, sticky="E")
+        nb_repetition_label.grid(row = start_row + 1,column=0, columnspan=2, padx=10, pady=10, sticky="E")
 
         self.entry_nb_repetition = ttk.Entry(self.parameters_frame)
-        self.entry_nb_repetition.grid(row = start_row + 2, column=2,columnspan=2, padx=10, pady=10, sticky="W")
+        self.entry_nb_repetition.grid(row = start_row + 1, column=2,columnspan=2, padx=10, pady=10, sticky="W")
         
-        self.parameters_list = ["Objects", "Hands", "Grips", "Movement Types", "Number of repetitions"]
-        self.parameters_entry_dict = [self.entry_list_grips, self.entry_list_hands, self.entry_list_movement_types, self.entry_list_objects, self.entry_nb_repetition]
+        self.parameters_list = ["Distances", "Angles", "Number of repetitions"]
+        self.parameters_entry_dict = [ self.entry_list_hands, self.entry_list_objects, self.entry_nb_repetition]
         last_row = start_row + 3
         return last_row
     
@@ -152,6 +135,7 @@ class ExperimentInterface:
     def build_experimental_parameters_layout_from_list(self):
         
         self.parameters_list = self.experiment.selected_session.parameters_list
+        print(f"Parameters list: {self.parameters_list}")
         
         ### EXPERIMENT PARAMETERS
         self.parameters_frame = ttk.Frame(self.session_frame)
@@ -222,7 +206,6 @@ class ExperimentInterface:
             self.root.destroy()
             cv2.destroyAllWindows()
             
-
 class ExperimentRecordingInterface(ExperimentInterface):
     
     _LOCATION_OPTIONS = ["Paris", "Montpellier"]
@@ -497,7 +480,6 @@ class ExperimentRecordingInterface(ExperimentInterface):
 
     def iniate_experiment(self):
         self.experiment.selected_session.start()
-        
         
 class ExperimentProcessingInterface(ExperimentInterface):
     def __init__(self, mode = 'Processing'):
@@ -822,8 +804,6 @@ class ExperimentReplayInterface(ExperimentProcessingInterface):
         #         pseudo_checkbutton.config(state="disabled", style="danger.Outline.Toolbutton")
         # self.valid_participants = self.participants.loc[self.participants['Pre-processable']==True]
                    
-        
-
 class ExperimentAnalysisInterface(ExperimentProcessingInterface):
     def __init__(self):
         super().__init__(mode="Analysis")
@@ -876,5 +856,4 @@ if __name__ == "__main__":
         interface = ExperimentAnalysisInterface()
     else:
         raise ValueError(f"Mode {args['mode']} not recognized")
-    multiprocessing.set_start_method('spawn', force=True)
     interface.start()

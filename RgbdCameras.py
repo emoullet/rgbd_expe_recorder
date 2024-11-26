@@ -227,7 +227,6 @@ class RgbdCamera:
         else:
             return False, None, None
     
-    
     def next_frame_video(self):
         success, frame = self.video.read()
         # frame = cv2.resize(frame, self.cam_data['resolution'])
@@ -264,8 +263,7 @@ class RgbdCamera:
     def get_timestamps(self):
         return self.timestamps
     
-    
-    def is_on(self):
+    def isOn(self):
         return self.on
     
     def is_on_replay(self):
