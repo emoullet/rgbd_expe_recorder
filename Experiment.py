@@ -11,9 +11,9 @@ import numpy as np
 
 import databases_utils as db
 import ExperimentRecorder as erc
-import ExperimentPreProcessor as epp
-import ExperimentReplayer as erp
-import ExperimentAnalyser as ea
+# import ExperimentPreProcessor as epp
+# import ExperimentReplayer as erp
+# import ExperimentAnalyser as ea
 
 from config import SESSION_OPTIONS, MODES
             
@@ -147,7 +147,8 @@ class Session:
     _PARTICIPANTS_PSEUDOS_DATABASE_HEADER = ["FirstName", "Surname", "Pseudo"]
     _SUPPORTED_LANGUAGES = ["French", "English"]
     _INSTRUCTIONS_LANGUAGES_HEADER = ["Label"] + _SUPPORTED_LANGUAGES
-    
+    _DEFAULT_PARAMETERS_LIST = ["Objects", "Hands", "Grips", "Movement Types", "Number of repetitions"]    #TODO : MODIFY THIS ACCORDING TO YOUR NEEDS
+
     def __init__(self, experiment_path, index, mode = 'Recording') -> None:
         self.index = index
         self.label = f"Session {self.index}"
@@ -198,7 +199,7 @@ class Session:
         self.is_new = not os.path.exists(self.path)
         self.experimental_parameters = None
         self.params_separator = ';' #separator used in the experiment parameters csv file
-        self.parameters_list = ["Objects", "Hands", "Grips", "Movement Types", "Number of repetitions"]
+        self.parameters_list = self._DEFAULT_PARAMETERS_LIST
         
         if self.is_new :
             if self.mode != 'Recording':
@@ -277,6 +278,7 @@ class Session:
             self.all_data_available = False
             self.missing_data.append('experimental parameters')
         else:
+            print(f"Reading experimental parameters from '{csv_path}'")
             self.experimental_parameters = {}
             with open(csv_path, "r") as csvfile:
                 reader = csv.reader(csvfile)
@@ -376,9 +378,11 @@ class Session:
             self.all_data_available = False
         else:
             self.participants_database = pd.read_csv(participants_csv_path)
+            print(f"Participants database imported from '{participants_csv_path}'")
+            print(f"Participants database: \n{self.participants_database}")
             print(f"Pseudos database imported from '{participants_csv_path}'")
-            #add a column "To Process" to the database, with each row filled with True
-            self.participants_database["To Process"] = self.preselect_all_participants
+        #add a column "To Process" to the database, with each row filled with True
+        self.participants_database["To Process"] = self.preselect_all_participants
             
             
     def import_instructions_languages(self):
