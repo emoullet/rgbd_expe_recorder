@@ -176,8 +176,18 @@ class ExperimentInterface:
                 entry.config(state="disabled")
 
     def display_session_recording_parameters(self, params, disable = False):
-        #TODO
-        pass
+        for entry_type in params.keys():
+            if entry_type == 'devices_ids':
+                for device_id in params[entry_type]:
+                    for device_check in self.device_checkbuttons:
+                        if device_check.cget("text").split(" ")[1] == device_id:
+                            device_check.state(['selected'])
+            elif entry_type == 'resolution':
+                resolution_str = f"{params[entry_type][0]}/{params[entry_type][1]}"
+                self.resolution_var.set(resolution_str)
+                self.resolution_checkbuttons[resolution_str].state(['selected'])
+            elif entry_type == 'fps':
+                self.fps_var.set(params[entry_type][0])
     
     def browse(self):
         input = filedialog.askdirectory()
@@ -255,9 +265,12 @@ class ExperimentRecordingInterface(ExperimentInterface):
         resolution_label = ttk.Label(recording_frame, text="Resolution")
         resolution_label.grid(row=1, column=0, sticky="EW", padx=10)  # Center the label
         self.resolution_var = tk.StringVar()
+        self.resolution_checkbuttons = {}
         for col, resolution in enumerate(self._RESOLUTION_OPTIONS):
-            resolution_check = ttk.Radiobutton(recording_frame, text=f'{resolution[0]}/{resolution[1]}', value=self._RESOLUTION_OPTIONS_STR[col], variable=self.resolution_var, command=self.select_resolution)
+            resolution_str = f"{resolution[0]}/{resolution[1]}"
+            resolution_check = ttk.Radiobutton(recording_frame, text=resolution_str, value=self._RESOLUTION_OPTIONS_STR[col], variable=self.resolution_var, command=self.select_resolution)
             resolution_check.grid(row=1, column=col+1, sticky="EW")
+            self.resolution_checkbuttons[resolution_str] = resolution_check
             
         self.fps_label = ttk.Label(recording_frame, text="FPS")
         self.fps_label.grid(row=2, column=0, sticky="EW", padx=10)  # Center the label
@@ -455,6 +468,8 @@ class ExperimentRecordingInterface(ExperimentInterface):
     def validate_experiment_parameters(self):
         self.update_experimental_parameters()
         self.build_recording_options_layout()
+        recording_params = self.experiment.get_session_recording_parameters()
+        self.display_session_recording_parameters(recording_params)
             
     def check_name_entries(self):
         if len(self.entry_participant_name.get())<=0 or len(self.entry_participant_first_name.get()) <= 0:

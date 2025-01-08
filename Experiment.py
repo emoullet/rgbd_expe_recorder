@@ -220,6 +220,7 @@ class Session:
             self.import_pseudos_participants_database()
             self.import_instructions_languages()
             self.read_experimental_parameters()
+            self.read_recording_parameters()
     
         print(f"Selected session: {self.label}")
         if self.mode != 'Recording':
@@ -463,6 +464,9 @@ class Session:
     
     def get_experimental_parameters(self):
         return self.experimental_parameters
+    
+    def get_recording_parameters(self):
+        return self.recording_parameters
     
     def get_participants(self):
         return self.participants_database
