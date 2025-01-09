@@ -82,6 +82,7 @@ class ExperimentRecorder:
         print(f"Start saving {self.current_path}")
         path= self.path_gzip
         path_timestamps = self.path_timestamps
+        path_timestamps_csv = self.path_timestamps_csv
         dm_series = self.depth_map_series
         t_series= self.time_series
         df = pd.DataFrame({'Depth_maps': dm_series,
@@ -97,7 +98,7 @@ class ExperimentRecorder:
         new_df.to_pickle(path_timestamps, compression='gzip')
         df_timestamps = pd.DataFrame()
         df_timestamps['Timestamps'] = df['Timestamps']
-        df_timestamps.to_csv(self.path_timestamps_csv, index=False)
+        df_timestamps.to_csv(path_timestamps_csv, index=False)
         print(f"Finished saving {path}")
 
 
