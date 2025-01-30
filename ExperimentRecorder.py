@@ -19,7 +19,8 @@ class ExperimentRecorder:
         self.fps = fps
         
         self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        self.rgbd_camera = RgbdCamera( device_id=device_id,  resolution=resolution, fps=fps)
+        self.rgbd_camera = RgbdCamera( device_id=device_id,  resolution=resolution, fps=fps, auto_focus=True, get_depth=True,
+                                      sync_depth=True, print_rgb_stereo_latency=False, show_disparity=False)
         self.device_data = self.rgbd_camera.get_device_data()
         res = self.device_data['resolution']
         # self.res = (res[0], res[1])
