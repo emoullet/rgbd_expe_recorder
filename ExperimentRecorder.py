@@ -47,7 +47,7 @@ class ExperimentRecorder:
         self.new_rec=False
         self.end_rec = False
         while self.rgbd_camera.isOn():
-            success, img, map = self.rgbd_camera.next_frame()
+            success, img, map, t = self.rgbd_camera.next_frame()
             if not success:
                 continue
             # map = self.rgbd_camera.get_depth_map()
@@ -63,7 +63,6 @@ class ExperimentRecorder:
             if self.obj_img is not None:
                 self.img[:self.obj_img.shape[0], :self.obj_img.shape[1]] = self.obj_img
             if self.recording:
-                t = pd.Timestamp.now()
                 self.time_series.append(t)
                 self.depth_map_series.append(map)
                 recorder.write(self.img)
