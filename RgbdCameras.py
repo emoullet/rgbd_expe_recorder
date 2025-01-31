@@ -147,7 +147,6 @@ class RgbdCamera:
             self.cam_data = cam_params
         else:
             self.cam_data = {}
-            self.build_device()
             if self.get_depth:                
                 self.mono_fps = 120 # maximum fps for mono cameras, to ensure that the stereo depth node can output with minimum latency compared to the RGB camera
                 if not self.sync_depth:
@@ -157,6 +156,7 @@ class RgbdCamera:
                     self.next_frame = self.next_frame_depth_synced_livestream
             else:
                 self.next_frame = self.next_frame_livestream
+            self.build_device()
         self.frame = None
         self.new_frame = False
 
