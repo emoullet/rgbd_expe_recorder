@@ -237,10 +237,11 @@ class RgbdCamera:
         if self.cam_auto_mode:
             print("Setting auto exposure and white balance")
             self.camRgb.initialControl.setAutoExposureEnable()
+            self.camRgb.initialControl.setAutoExposureLimit(1000)
         else:
-            self.expTime = 8000 # exposure time
-            self.sensIso = 400 # ISO sensitivity
-            self.wbManual = 8000 # manual white balance
+            self.expTime = 1000 # exposure time
+            self.sensIso = 1200 # ISO sensitivity
+            self.wbManual = 12000 # manual white balance
             self.camRgb.initialControl.setManualWhiteBalance(self.wbManual)
             self.camRgb.initialControl.setManualExposure(self.expTime, self.sensIso)
             print("Setting manual white balance: ", self.wbManual)
