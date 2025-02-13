@@ -19,8 +19,14 @@ class ExperimentRecorder:
         self.fps = fps
         
         self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        self.rgbd_camera = RgbdCamera( device_id=device_id,  resolution=resolution, fps=fps, auto_focus=True, get_depth=True,
-                                      sync_depth=True, print_rgb_stereo_latency=False, show_disparity=False)
+        self.rgbd_camera = RgbdCamera( device_id=device_id,
+                                      resolution=resolution,
+                                      fps=fps,
+                                      auto_focus=True,
+                                      get_depth=True,
+                                      sync_depth=False,
+                                      print_rgb_stereo_latency=True,
+                                      show_disparity=False)
         self.device_data = self.rgbd_camera.get_device_data()
         res = self.device_data['resolution']
         # self.res = (res[0], res[1])
@@ -47,8 +53,15 @@ class ExperimentRecorder:
     def capture_task(self):
         self.new_rec=False
         self.end_rec = False
-        while self.rgbd_camera.isOn():
-            success, img, map, t = self.rgbd_camera.next_frame()
+        last_t = 0
+        while self.rgbd_camera.is_on():
+            success, img, map, rgb_timestamp = self.rgbd_camera.next_frame()
+            rgb_timestamp = rgb_timestamp.total_seconds()
+            
+            capture_fps = 1 / (rgb_timestamp - last_t) if last_t != 0 else 0
+            
+            print(f"Capture FPS: {capture_fps}")
+            last_t = rgb_timestamp
             if not success:
                 continue
             # map = self.rgbd_camera.get_depth_map()
@@ -64,9 +77,9 @@ class ExperimentRecorder:
             if self.obj_img is not None:
                 self.img[:self.obj_img.shape[0], :self.obj_img.shape[1]] = self.obj_img
             if self.recording:
-                self.time_series.append(t)
-                self.depth_map_series.append(map)
-                recorder.write(self.img)
+                # self.time_series.append(t)
+                # self.depth_map_series.append(map)
+                # recorder.write(self.img)
                 if self.end_rec:
                     self.end_rec = False
                     recorder.release()

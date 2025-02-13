@@ -4,6 +4,273 @@ import numpy as np
 import time
 from typing import Optional, Any, Dict, List
 from datetime import timedelta
+import threading
+
+
+class SimpleRgbdCam:
+    _720P = [1280., 720.]
+    _1080P = [1920., 1080.]
+    _480P = [640., 480.]
+    _RGB_MODE = 'RGB'
+    _BGR_MODE = 'BGR'
+    def __init__(self,
+                 fps_rgb=60,
+                 fps_depth=None,
+                 resolution=_720P,
+                 show_rgb=True,
+                 show_depth=True,
+                 show_stats=False,
+                 show_fps=False,
+                 color_mode='RGB'
+                 ):
+        self.running = False
+        self.fps_rgb = fps_rgb
+        self.fps_depth = fps_depth if fps_depth is not None else fps_rgb
+        self.resolution = resolution
+        self.show_rgb = show_rgb
+        self.show_depth = show_depth
+        self.show_stats = show_stats
+        self.show_fps = show_fps
+        if color_mode not in [self._RGB_MODE, self._BGR_MODE]:
+            raise ValueError(f'color_mode must be one of {self._RGB_MODE} or {self._BGR_MODE}')
+        else:
+            self.color_mode = color_mode
+        
+        self.build_device()
+        
+        self.cam_data = {}
+        self.cam_data['resolution'] = (int(self.resolution[0]), int(self.resolution[1]))
+        calibData = self.device.readCalibration()
+        self.cam_data['matrix'] = np.array(calibData.getCameraIntrinsics(dai.CameraBoardSocket.RGB, self.cam_data['resolution'][0], self.cam_data['resolution'][1]))
+        self.cam_data['hfov'] = calibData.getFov(dai.CameraBoardSocket.RGB)
+        
+    def build_device(self):
+    
+        self.pipeline = dai.Pipeline()
+        
+        self.pipeline.setXLinkChunkSize(0)
+        self.queue_size = 2
+        self.blocking_queue = True
+
+        monoLeft = self.pipeline.create(dai.node.MonoCamera)
+        monoRight = self.pipeline.create(dai.node.MonoCamera)
+        
+        monores = dai.MonoCameraProperties.SensorResolution.THE_400_P
+        monoLeft.setResolution(monores)
+        monoLeft.setCamera("left")
+        monoRight.setResolution(monores)
+        monoRight.setCamera("right")
+        
+        
+        monoLeft.setFps(self.fps_depth)
+        monoRight.setFps(self.fps_depth)
+        
+        # color = self.pipeline.create(dai.node.ColorCamera)
+        color = self.pipeline.createColorCamera()
+        color.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+        color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+        color.setCamera("color")
+        if self.resolution == self._720P:
+            color.setIspScale(2, 3)
+        elif self.resolution == self._480P:
+            color.setIspScale(1, 3)
+            
+        color.setInterleaved(True)
+        color.setFps(self.fps_rgb)
+        
+        if self.color_mode == self._RGB_MODE:
+            color.setColorOrder(dai.ColorCameraProperties.ColorOrder.RGB)
+            print("Setting RGB color mode") 
+        elif self.color_mode == self._BGR_MODE:
+            color.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
+            print("Setting BGR color mode")
+        
+        monoLeft.setNumFramesPool(2)
+        monoRight.setNumFramesPool(2)
+        color.setNumFramesPool(2,2,2,2,2)
+        
+        
+        self.stereo = self.pipeline.create(dai.node.StereoDepth)
+        self.stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_ACCURACY)
+        self.stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
+        self.stereo.setLeftRightCheck(True)
+        self.stereo.setExtendedDisparity(False)
+        # stereo.setSubpixel(True)
+    
+        self.stereo.left.setBlocking(self.blocking_queue)
+        self.stereo.left.setQueueSize(self.queue_size)
+        self.stereo.right.setBlocking(self.blocking_queue)
+        self.stereo.right.setQueueSize(self.queue_size)
+        
+        
+
+        color_out = self.pipeline.create(dai.node.XLinkOut)
+        color_out.setStreamName("video")
+        color_out.input.setBlocking(self.blocking_queue)
+        color_out.input.setQueueSize(self.queue_size)
+        
+        # disparity_out = self.pipeline.create(dai.node.XLinkOut)
+        # disparity_out.setStreamName("disparity")
+        # disparity_out.input.setBlocking(self.blocking_queue)
+        # disparity_out.input.setQueueSize(self.queue_size)
+        
+        depth_out = self.pipeline.create(dai.node.XLinkOut)
+        depth_out.setStreamName("depth")
+        depth_out.input.setBlocking(self.blocking_queue)
+        depth_out.input.setQueueSize(self.queue_size)
+        
+        color.isp.link(color_out.input)
+        monoLeft.out.link(self.stereo.left)
+        monoRight.out.link(self.stereo.right)
+
+        self.stereo.depth.link(depth_out.input)
+        # self.stereo.disparity.link(disparity_out.input)
+
+        disparityMultiplier = 255.0 / self.stereo.initialConfig.getMaxDisparity()
+        
+        self.device = dai.Device(self.pipeline, maxUsbSpeed=dai.UsbSpeed.SUPER_PLUS)
+        
+    
+    def run(self):
+        self.rgb_frame = None
+        self.depth_frame = None
+        
+        self.running = True
+        self.current_depth_fps = 0
+        
+        
+        self.rgb_fps_list = []
+        self.depth_fps_list = []
+        self.rgb_to_depth_latency_list = []
+        
+        self.current_rgb_timestamp = 0
+        self.current_depth_timestamp = 0
+        self.rgb_thread = threading.Thread(target=self.rgb_collection_thread)
+        self.depth_thread = threading.Thread(target=self.depth_collection_thread)   
+        self.rgb_thread.start()
+        self.depth_thread.start()
+    
+    def rgb_collection_thread(self):
+        print("Starting RGB collection thread...")
+        old_rgb_timestamp = 1 
+        queue = self.device.getOutputQueue("video", self.queue_size, self.blocking_queue)  
+        while self.running:
+            color_msg = queue.get()
+            self.rgb_frame = color_msg.getCvFrame()
+            self.current_rgb_timestamp = color_msg.getTimestamp().total_seconds()
+            
+            
+            
+            if self.show_fps or self.show_stats:
+                current_rgb_fps = int(1.0 / (self.current_rgb_timestamp - old_rgb_timestamp))
+                
+            if self.show_fps:
+                print(f"RGB FPS: {current_rgb_fps}")
+            
+            if self.show_stats:
+                self.rgb_fps_list.append(current_rgb_fps)
+                
+            old_rgb_timestamp = self.current_rgb_timestamp
+            
+        
+        self.depth_thread.join()
+        
+    def depth_collection_thread(self):
+        print("Starting Depth collection thread...")
+        self.current_depth_timestamp = 0
+        self.old_depth_timestamp = 1
+        self.depth_queue = self.device.getOutputQueue("depth", self.queue_size, self.blocking_queue)
+        
+        while self.running:
+            depth_msg = self.depth_queue.get()
+            self.depth_frame = depth_msg.getCvFrame()
+            self.current_depth_timestamp = depth_msg.getTimestamp().total_seconds()  
+            
+            if self.show_fps or self.show_stats:
+                self.current_depth_fps = int(1.0 / (self.current_depth_timestamp - self.old_depth_timestamp))
+                
+            if self.show_fps:
+                print(f"Depth FPS: {self.current_depth_fps}")
+                
+            if self.show_stats:
+                self.depth_fps_list.append(self.current_depth_fps)
+            self.old_depth_timestamp = self.current_depth_timestamp
+            # cv2.imshow("depth", depth_frame)
+    
+    def next_frame(self):
+        
+        success = True
+        if self.rgb_frame is None or self.depth_frame is None or self.current_rgb_timestamp == 0 or self.current_depth_timestamp == 0:
+            success = False
+            return success, self.rgb_frame, self.depth_frame, self.current_rgb_timestamp, self.current_depth_timestamp
+        
+        if self.show_rgb or self.show_depth:
+            self.show_frames()
+            
+        if self.show_fps or self.show_stats:
+            rgb_to_depth_latency = self.current_rgb_timestamp - self.current_depth_timestamp
+        
+        if self.show_fps:
+            print(f"RGB-Depth latency: {rgb_to_depth_latency*1000:.1f} ms")
+            
+        if self.show_stats:
+            self.rgb_to_depth_latency_list.append(rgb_to_depth_latency * 1000)  # storing latency in ms
+            
+        return success, self.rgb_frame, self.depth_frame, self.current_rgb_timestamp, self.current_depth_timestamp
+    
+    def show_frames(self):
+        if self.show_rgb:
+            if self.rgb_frame is not None:
+                cv2.imshow("color", self.rgb_frame)
+            
+        if self.show_depth:
+            if self.depth_frame is not None:
+                depthFrameColor = cv2.normalize(self.depth_frame, None, 255, 0, cv2.NORM_INF, cv2.CV_8UC1)
+                depthFrameColor = cv2.equalizeHist(depthFrameColor)
+                depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_JET)
+                cv2.imshow("depth", depthFrameColor)
+            
+        if cv2.waitKey(1) == ord("q"):
+            self.stop()
+            
+    def print_stats(self):
+        print(f"Average RGB FPS: {sum(self.rgb_fps_list) / len(self.rgb_fps_list)}")           
+        print(f"Max RGB FPS: {max(self.rgb_fps_list)}")  
+        print(f"Min RGB FPS: {min(self.rgb_fps_list)}")
+        std_rgb_fps = np.std(self.rgb_fps_list)  
+        print(f"Standard deviation RGB FPS: {std_rgb_fps}")
+        nb_frames_with_fps_below_desired_minus_std = len([fps for fps in self.rgb_fps_list if fps < self.fps_rgb - std_rgb_fps])
+        print(f"Number of frames with FPS below desired FPS minus standard deviation: {nb_frames_with_fps_below_desired_minus_std}")
+            
+        print(f"Average Depth FPS: {sum(self.depth_fps_list) / len(self.depth_fps_list)}")   
+        print(f"Max Depth FPS: {max(self.depth_fps_list)}")
+        print(f"Min Depth FPS: {min(self.depth_fps_list)}")            
+        std_depth_fps = np.std(self.depth_fps_list)
+        print(f"Standard deviation Depth FPS: {std_depth_fps}")
+        nb_depth_frames_below_threshold = len([fps for fps in self.depth_fps_list if fps < self.fps_depth - std_depth_fps])
+        print(f"Number of Depth frames below threshold minus standard deviation: {nb_depth_frames_below_threshold}")
+            
+        self.rgb_to_depth_latency_list= self.rgb_to_depth_latency_list[10:]                   
+        print(f"Average RGB-Depth latency: {sum(self.rgb_to_depth_latency_list) / len(self.rgb_to_depth_latency_list)} ms")
+        print(f"Max RGB-Depth latency: {max(self.rgb_to_depth_latency_list)} ms")
+        print(f"Min RGB-Depth latency: {min(self.rgb_to_depth_latency_list)} ms")
+            
+
+    def start(self):
+        self.run()
+        
+    def stop(self):
+        self.running = False
+        self.device.close()
+        cv2.destroyAllWindows()
+        if self.show_stats:
+            self.print_stats()
+        
+    def is_on(self):
+        return self.running
+    
+    def get_device_data(self):
+        return {'resolution': (1280, 720)}
 
 class RgbdCamera:
     """
@@ -125,6 +392,7 @@ class RgbdCamera:
         """
 
         print('Building RGBd Camera...')
+        self.on = False
         self.cam_auto_mode = True
         self.device_id = device_id
         print(f'device_id: {self.device_id}')
@@ -140,6 +408,9 @@ class RgbdCamera:
         self.get_depth = get_depth
         self.sync_depth = sync_depth
         
+        self.rgb_fps_measured = 0
+        self.depth_fps_measured = 0
+        
         print(f'fps: {fps}, resolution: {resolution}')
         if self.replay :
             if replay_data is not None:
@@ -150,7 +421,7 @@ class RgbdCamera:
         else:
             self.cam_data = {}
             if self.get_depth:                
-                self.mono_fps = 40 # maximum fps for mono cameras, to ensure that the stereo depth node can output with minimum latency compared to the RGB camera
+                self.mono_fps = 60 # maximum fps for mono cameras, to ensure that the stereo depth node can output with minimum latency compared to the RGB camera
                 if not self.sync_depth:
                     self.next_frame = self.next_frame_depth_livestream
                 else:
@@ -159,10 +430,17 @@ class RgbdCamera:
             else:
                 self.next_frame = self.next_frame_livestream
             self.build_device()
-        self.frame = None
+        self.rgb_frame = None
+        self.depth_map = None
         self.new_frame = False
         self.rgb_timestamp = 0
         self.depth_timestamp = 0
+        
+        self.rgb_frames_thread = threading.Thread(target=self.collect_rgb_frames)
+        self.rgb_frames_thread.start()
+        if self.get_depth:
+            self.depth_frames_thread = threading.Thread(target=self.collect_depth_frames)
+            self.depth_frames_thread.start()    
 
         print(f'RGBd Camera built: replay={replay}')
     
@@ -216,6 +494,8 @@ class RgbdCamera:
         # Start defining a pipeline
         self.pipeline = dai.Pipeline()
         self.pipeline.setXLinkChunkSize(0) # decrease latency
+        self.queue_size = 2
+        self.blocking_queue = True
         
         # ColorCamera
         print("Creating Color Camera...")
@@ -223,7 +503,9 @@ class RgbdCamera:
         self.camRgb.setResolution(self.rgb_res)
         
         # Set the properties of the RGB camera
-        self.camRgb.setBoardSocket(dai.CameraBoardSocket.RGB)
+        self.camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+        self.camRgb.setCamera("color")
+        
         if self.color_mode == self._RGB_MODE:
             self.camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.RGB)
             print("Setting RGB color mode")
@@ -232,6 +514,7 @@ class RgbdCamera:
             print("Setting BGR color mode")
         
         self.camRgb.setInterleaved(True)
+        
         if self.resolution == self._720P:
             self.camRgb.setIspScale(2, 3)
         elif self.resolution == self._480P:
@@ -256,7 +539,7 @@ class RgbdCamera:
             self.camRgb.initialControl.setManualFocus(self.lensPos)
         else:
             self.camRgb.initialControl.setAutoFocusMode(dai.RawCameraControl.AutoFocusMode.CONTINUOUS_VIDEO)
-        # cam.setIspScale(self.scale_nd[0], self.scale_nd[1])
+        
         self.camRgb.setFps(self.fps)
         # camRgb.setPreviewSize(self.cam_data['resolution'][0], self.cam_data['resolution'][1])
         # camRgb.setVideoSize(self.cam_data['resolution'][0], self.cam_data['resolution'][1])
@@ -285,26 +568,20 @@ class RgbdCamera:
 
         # Create StereoDepth node that will produce the depth map
         self.stereo = self.pipeline.create(dai.node.StereoDepth)
-        self.stereo.initialConfig.setConfidenceThreshold(245)
-        self.stereo.setDepthAlign(dai.CameraBoardSocket.RGB)
         
         camLeft.out.link(self.stereo.left)
         camRight.out.link(self.stereo.right)
 
-        # Closer-in minimum depth, disparity range is doubled (from 95 to 190):
-        extended_disparity = False
-        # Better accuracy for longer distance, fractional disparity 32-levels:
-        subpixel = False
-        # Better handling for occlusions:
-        lr_check = True
-
-        self.stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
+        self.stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_ACCURACY)
+        self.stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
+        self.stereo.setLeftRightCheck(True)
+        self.stereo.setExtendedDisparity(False)
         
-        self.stereo.initialConfig.setMedianFilter(dai.MedianFilter.KERNEL_7x7) # Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
-        self.stereo.setLeftRightCheck(lr_check)
-        self.stereo.setExtendedDisparity(extended_disparity)
-        self.stereo.setSubpixel(subpixel)
-    
+        self.stereo.left.setBlocking(self.blocking_queue)
+        self.stereo.left.setQueueSize(self.queue_size)
+        self.stereo.right.setBlocking(self.blocking_queue)
+        self.stereo.right.setQueueSize(self.queue_size)
+        
     
     def create_rgb_only_pipeline(self):
         """
@@ -319,15 +596,16 @@ class RgbdCamera:
         # Create XLinkOut node for RGB camera
         self.cam_out = self.pipeline.createXLinkOut()
         self.cam_out.setStreamName("rgb")
-        self.cam_out.input.setQueueSize(1)
-        self.cam_out.input.setBlocking(False)
+        self.cam_out.input.setQueueSize(self.queue_size)
+        self.cam_out.input.setBlocking(self.blocking_queue)
+        
         self.camRgb.isp.link(self.cam_out.input)
         # camRgb.video.link(self.cam_out.input)
         # camRgb.preview.link(self.cam_out.input)
 
         print("RGB pipeline creeeeeeeeeeeeeated.")
         self.device.startPipeline(self.pipeline)
-        self.rgbQ = self.device.getOutputQueue(name="rgb", maxSize=1, blocking=False)
+        self.rgbQ = self.device.getOutputQueue(name="rgb", maxSize=self.queue_size, blocking=self.blocking_queue)
         
     def create_rgb_depth_pipeline(self):
         """
@@ -340,8 +618,8 @@ class RgbdCamera:
         # Create XLinkOut node for RGB camera
         self.cam_out = self.pipeline.createXLinkOut()
         self.cam_out.setStreamName("rgb")
-        self.cam_out.input.setQueueSize(1)
-        self.cam_out.input.setBlocking(False)
+        self.cam_out.input.setQueueSize(self.queue_size)
+        self.cam_out.input.setBlocking(self.blocking_queue)
         self.camRgb.isp.link(self.cam_out.input)
         
         self.create_stereo_pipeline()
@@ -350,14 +628,14 @@ class RgbdCamera:
         self.depth_out.setStreamName("depth")
         self.stereo.depth.link(self.depth_out.input)
         # decreases latency
-        self.depth_out.input.setQueueSize(1)
-        self.depth_out.input.setBlocking(False)
+        self.depth_out.input.setQueueSize(self.queue_size)
+        self.depth_out.input.setBlocking(self.blocking_queue)
         
         print("RGB-depth (not synchronized) pipeline creeeeeeeeeeeeeated.")
         
         self.device.startPipeline(self.pipeline)
-        self.rgbQ = self.device.getOutputQueue(name="rgb", maxSize=1, blocking=False)
-        self.depthQ = self.device.getOutputQueue(name="depth", maxSize=1, blocking=False)
+        self.rgbQ = self.device.getOutputQueue(name="rgb", maxSize=self.queue_size, blocking=self.blocking_queue)
+        self.depthQ = self.device.getOutputQueue(name="depth", maxSize=self.queue_size, blocking=self.blocking_queue)
 
     def create_rgb_depth_synced_pipeline(self, max_rgb_depth_latency):
         """
@@ -377,6 +655,8 @@ class RgbdCamera:
         xoutGrp = self.pipeline.create(dai.node.XLinkOut)
 
         xoutGrp.setStreamName("xout")
+        xoutGrp.input.setBlocking(self.blocking_queue)
+        xoutGrp.input.setQueueSize(self.queue_size)
         
         self.stereo.depth.link(sync.inputs["depth"])      
         self.camRgb.isp.link(sync.inputs["rgb"])
@@ -385,7 +665,7 @@ class RgbdCamera:
         
         print("RGB-depth (synchronized) pipeline creeeeeeeeeeeeeated.")
         self.device.startPipeline(self.pipeline)
-        self.synced_queue = self.device.getOutputQueue(name="xout", maxSize=1, blocking=False)
+        self.synced_queue = self.device.getOutputQueue(name="xout", maxSize=self.queue_size, blocking=self.blocking_queue)
 
     def load_replay(self, replay):
         """
@@ -406,6 +686,51 @@ class RgbdCamera:
         self.timestamps = replay['Timestamps']
         self.depth_maps = replay['Depth_maps']
         
+    def collect_rgb_frames(self):
+        """
+        Collects RGB frames from the camera.
+
+        Returns:
+            None
+        """
+        old_rgb_timestamp = 1
+        
+        while True:
+            if self.on:
+                try:
+                    frame = self.rgbQ.get()
+                    self.rgb_timestamp = frame.getTimestamp().total_seconds()
+                    self.rgb_fps_measured = int(1.0 / (self.rgb_timestamp - old_rgb_timestamp))
+                    self.rgb_frame = frame.getCvFrame()
+                    self.new_frame = True
+                    old_rgb_timestamp = self.rgb_timestamp  # update old timestamp for next frame
+                except:
+                    self.rgb_frame = None
+            else:
+                time.sleep(0.05)
+    
+    def collect_depth_frames(self):
+        """
+        Collects depth frames from the camera.
+
+        Returns:
+            None
+        """
+        old_depth_timestamp = 1
+        while True:
+            if self.on:
+                try:
+                    frame = self.depthQ.get()
+                    self.depth_timestamp = frame.getTimestamp().total_seconds() 
+                    self.depth_map = frame.getFrame()
+
+                    self.depth_fps_measured = int(1.0 / (self.depth_timestamp - old_depth_timestamp))
+                    old_depth_timestamp = self.depth_timestamp  # update old timestamp for next frame
+                except:
+                    self.depth_map = None
+            else:
+                time.sleep(0.05)
+        
     def next_frame_livestream(self):
         """
         Retrieves the next frame from the livestream, without depth map.
@@ -424,22 +749,23 @@ class RgbdCamera:
         if r_frame is not None:
             frame = r_frame.getCvFrame()
             frame = cv2.resize(frame, self.cam_data['resolution'])
-            self.frame = frame
+            self.rgb_frame = frame
             self.new_frame = True
             success = True
         else:
-            self.frame = None
+            self.rgb_frame = None
             success = False
             
         
-        if self.print_rgb_stereo_latency:
+        if success and self.print_rgb_stereo_latency:
             now = dai.Clock.now()
             rgb_latency = (now - r_frame.getTimestamp()).total_seconds() * 1000
             print(f'rgb latency: {rgb_latency} ms')
         
         if success:
-            return success, self.frame, None, self.rgb_timestamp
+            return success, self.rgb_frame, None, self.rgb_timestamp
         else:
+            print('unsuccessful')
             return False, None, None, None
         
     def next_frame_depth_livestream(self):
@@ -451,66 +777,34 @@ class RgbdCamera:
                 - frame (Optional[np.ndarray]): The RGB frame as a NumPy array, or None if not available.
                 - depth_map (Optional[np.ndarray]): The depth map as a NumPy array, or None if not available.
         """
-        try:
-            t = time.time()
-            r_frame = self.rgbQ.get()
-            print(f'rgb elapsed: {(time.time()-t)*1000} ms')
-            t = time.time()
-            d_frame = self.depthQ.get()
-            print(f'depth elapsed: {(time.time()-t)*1000} ms')
-            
-        except:
-            return False, None, None, None
         
-        if r_frame is not None:
-            frame = r_frame.getCvFrame()
-            new_rgb_timestamp = r_frame.getTimestamp().total_seconds()
-            fps_rgb = 1/(new_rgb_timestamp - self.rgb_timestamp)
-            self.rgb_timestamp = new_rgb_timestamp
-            # frame = cv2.resize(frame, self.cam_data['resolution'])
-            self.frame = frame
-            self.new_frame = True
+        if self.rgb_frame is not None and self.depth_map is not None:
+            success = True
         else:
-            self.frame = None
+            success = False
             
-        if d_frame is not None:
-            frame = d_frame.getFrame()
-            new_depth_timestamp = d_frame.getTimestamp().total_seconds()
-            fps_depth = 1/(new_depth_timestamp - self.depth_timestamp)
-            self.depth_timestamp = new_depth_timestamp
-            frame = cv2.resize(frame, self.cam_data['resolution'])
-            self.depth_map = frame
-        else:
-            self.depth_map = None
-
-
-        if self.print_rgb_stereo_latency:
+        if success and self.print_rgb_stereo_latency:
             now = dai.Clock.now().total_seconds()
             rgb_latency = (now - self.rgb_timestamp) * 1000
             depth_latency = (now - self.depth_timestamp) * 1000
             rgb_depth_delay = (self.depth_timestamp - self.rgb_timestamp) * 1000
 
-            print(f'fps rgb: {fps_rgb}')
-            print(f'fps depth: {fps_depth}')
+            print(f'fps rgb: {self.rgb_fps_measured}')
+            print(f'fps depth: {self.depth_fps_measured}')
             print(f'rgb latency: {rgb_latency} ms')
             print(f'depth latency: {depth_latency} ms')
             print(f'rgb-depth delay: {rgb_depth_delay} ms')
             
-        if self.show_disparity:
+        if success and self.show_disparity:
             depthFrameColor = cv2.normalize(self.depth_map, None, 255, 0, cv2.NORM_INF, cv2.CV_8UC1)
             depthFrameColor = cv2.equalizeHist(depthFrameColor)
             depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_JET)
             cv2.imshow(f'depth {self.device_id}', depthFrameColor)
             cv2.waitKey(1)
-
-        
-        if self.frame is not None and self.depth_map is not None:
-            success = True
-        else:
-            success = False
         if success:
-            return success, self.frame, self.depth_map, self.rgb_timestamp
+            return success, self.rgb_frame, self.depth_map, self.rgb_timestamp
         else:
+            print('unsuccessful')
             return success, None, None, None
     
     def next_frame_depth_synced_livestream(self):
@@ -537,10 +831,10 @@ class RgbdCamera:
         if r_frame is not None:
             frame = r_frame.getCvFrame()
             # frame = cv2.resize(frame, self.cam_data['resolution'])
-            self.frame = frame
+            self.rgb_frame = frame
             self.new_frame = True
         else:
-            self.frame = None
+            self.rgb_frame = None
             
         if d_frame is not None:
             frame = d_frame.getFrame()
@@ -565,13 +859,13 @@ class RgbdCamera:
             rgb_depth_delay = (d_frame.getTimestamp() - r_frame.getTimestamp()).total_seconds() * 1000
             print(f'rgb-depth delay: {rgb_depth_delay} ms')
         
-        if self.frame is not None and self.depth_map is not None:
+        if self.rgb_frame is not None and self.depth_map is not None:
             success = True
         else:
             success = False
             
         if success:
-            return success, self.frame, self.depth_map, self.rgb_timestamp
+            return success, self.rgb_frame, self.depth_map, self.rgb_timestamp
         else:
             return False, None, None, None
     
@@ -585,12 +879,12 @@ class RgbdCamera:
             the frame itself, and the corresponding depth map.
         """
         success, frame = self.video.read()
-        self.frame = frame
+        self.rgb_frame = frame
         self.depth_map = self.depth_maps[self.current_frame_index]
         self.rgb_timestamp = self.timestamps[self.current_frame_index]
         self.current_frame_index += 1
         self.new_frame = True
-        return success, self.frame, self.depth_map
+        return success, self.rgb_frame, self.depth_map
     
     def get_depth_map(self):
         """
@@ -622,6 +916,9 @@ class RgbdCamera:
         if not self.replay:
             time.sleep(0.05)
             self.device.close()
+        self.rgb_frames_thread.join()
+        if self.get_depth:
+            self.depth_frames_thread.join()
 
     def get_res(self):
         """
