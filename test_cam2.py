@@ -35,8 +35,8 @@ if __name__ == "__main__":
         depth_timestamp_list.append(depth_timestamp)
         print(f"Append depth time: {(time.time() - t_append) * 1000} ms")
         t_write = time.time()
-        video_writer.write(img)
-        # video_frame_list.append(img)
+        # video_writer.write(img)
+        video_frame_list.append(img)
         print(f"Write time: {(time.time() - t_write) * 1000} ms")
         
         elapsed_time = time.time() - t

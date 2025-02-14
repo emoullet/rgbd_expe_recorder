@@ -14,6 +14,7 @@ class SimpleRgbdCam:
     _RGB_MODE = 'RGB'
     _BGR_MODE = 'BGR'
     def __init__(self,
+                 device_id=None,
                  fps_rgb=60,
                  fps_depth=None,
                  resolution=_720P,
@@ -23,6 +24,7 @@ class SimpleRgbdCam:
                  show_fps=False,
                  color_mode='RGB'
                  ):
+        self.device_id = device_id
         self.running = False
         self.fps_rgb = fps_rgb
         self.fps_depth = fps_depth if fps_depth is not None else fps_rgb
@@ -45,6 +47,11 @@ class SimpleRgbdCam:
         self.cam_data['hfov'] = calibData.getFov(dai.CameraBoardSocket.RGB)
         
     def build_device(self):
+        
+        if self.device_id is None:  
+            self.device = dai.Device()
+        else:
+            self.device = dai.Device(dai.DeviceInfo(self.device_id), maxUsbSpeed=dai.UsbSpeed.SUPER_PLUS)
     
         self.pipeline = dai.Pipeline()
         
@@ -126,9 +133,8 @@ class SimpleRgbdCam:
         self.stereo.depth.link(depth_out.input)
         # self.stereo.disparity.link(disparity_out.input)
 
-        disparityMultiplier = 255.0 / self.stereo.initialConfig.getMaxDisparity()
         
-        self.device = dai.Device(self.pipeline, maxUsbSpeed=dai.UsbSpeed.SUPER_PLUS)
+        self.device.startPipeline(self.pipeline)
         
     
     def run(self):
