@@ -8,9 +8,9 @@ import threading
 
 
 class SimpleRgbdCam:
-    _720P = [1280., 720.]
-    _1080P = [1920., 1080.]
-    _480P = [640., 480.]
+    _720P = (1280, 720)
+    _1080P = (1920., 1080.)
+    _480P = (640., 480.)
     _RGB_MODE = 'RGB'
     _BGR_MODE = 'BGR'
     def __init__(self,

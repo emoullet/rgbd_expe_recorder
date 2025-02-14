@@ -77,9 +77,9 @@ class ExperimentRecorder:
             if self.obj_img is not None:
                 self.img[:self.obj_img.shape[0], :self.obj_img.shape[1]] = self.obj_img
             if self.recording:
-                # self.time_series.append(t)
-                # self.depth_map_series.append(map)
-                # recorder.write(self.img)
+                self.time_series.append(t)
+                self.depth_map_series.append(map)
+                recorder.write(self.img)
                 if self.end_rec:
                     self.end_rec = False
                     recorder.release()
