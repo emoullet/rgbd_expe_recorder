@@ -4,6 +4,8 @@ import time
 import numpy as np  
 import cv2
 import threading
+
+# COUCOU SARA
     
 class ExperimentRecorder:
     def __init__(self):
