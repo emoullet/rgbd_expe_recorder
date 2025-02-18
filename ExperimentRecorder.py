@@ -2,7 +2,7 @@
 
 import argparse
 import threading
-from RgbdCameras import RgbdCamera
+from RgbdCameras2 import SimpleRgbdCam as RgbdCamera
 import cv2
 import numpy as np
 import time
@@ -10,7 +10,7 @@ import pandas as pd
 import os
 
 class ExperimentRecorder:
-    def __init__(self, main_path, device_id = None, resolution=(1280,720), fps=30.0):
+    def __init__(self, main_path, device_id=None, resolution=(1280, 720), fps=30.0):
         print(f"Recorder created at {main_path}")
         self.main_path = main_path
         self.cam_label = device_id
@@ -21,12 +21,9 @@ class ExperimentRecorder:
         self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
         self.rgbd_camera = RgbdCamera( device_id=device_id,
                                       resolution=resolution,
-                                      fps=fps,
-                                      auto_focus=True,
-                                      get_depth=True,
-                                      sync_depth=False,
-                                      print_rgb_stereo_latency=True,
-                                      show_disparity=False)
+                                      fps_rgb=fps,      
+                                      show_rgb=True,
+                                      show_depth=False,)
         self.device_data = self.rgbd_camera.get_device_data()
         res = self.device_data['resolution']
         # self.res = (res[0], res[1])
