@@ -160,34 +160,6 @@ class ExperimentInterface:
             next_row = start_row + nb_row 
         return next_row, nb_col
         
-    def display_session_experimental_parameters(self, params, disable = False):
-        
-        self.params_separator = ';'
-        for label, entry in self.parameters_entry_dict.items():
-            s=''
-            param_values = params[label]
-            for index, value in enumerate(param_values):
-                s+=value
-                if index<len(param_values)-1:
-                    s+=self.params_separator
-            entry.config(state="normal")
-            entry.insert(0,s)
-            if disable:
-                entry.config(state="disabled")
-
-    def display_session_recording_parameters(self, params, disable = False):
-        for entry_type in params.keys():
-            if entry_type == 'devices_ids':
-                for device_id in params[entry_type]:
-                    for device_check in self.device_checkbuttons:
-                        if device_check.cget("text").split(" ")[1] == device_id:
-                            device_check.state(['selected'])
-            elif entry_type == 'resolution':
-                resolution_str = f"{params[entry_type][0]}/{params[entry_type][1]}"
-                self.resolution_var.set(resolution_str)
-                self.resolution_checkbuttons[resolution_str].state(['selected'])
-            elif entry_type == 'fps':
-                self.fps_var.set(params[entry_type][0])
     
     def browse(self):
         input = filedialog.askdirectory()
@@ -225,7 +197,7 @@ class ExperimentRecordingInterface(ExperimentInterface):
     _720P = [1280, 720]
     _480P = [640, 480]
     _RESOLUTION_OPTIONS = (_1080P, _720P, _480P)
-    _RESOLUTION_OPTIONS_STR = [str(res) for res in _RESOLUTION_OPTIONS]
+    _RESOLUTION_OPTIONS_STR = [f"{res[0]}/{res[1]}" for res in _RESOLUTION_OPTIONS]
     
     def __init__(self):
         super().__init__(mode="Recording")
@@ -275,7 +247,7 @@ class ExperimentRecordingInterface(ExperimentInterface):
         self.fps_label = ttk.Label(recording_frame, text="FPS")
         self.fps_label.grid(row=2, column=0, sticky="EW", padx=10)  # Center the label
         self.fps_var = tk.StringVar()
-        self.fps_var.set("30")
+        self.fps_var.set("60")
         self.fps_entry = ttk.Entry(recording_frame, textvariable=self.fps_var)
         self.fps_entry.grid(row=2, column=1, sticky="EW")
         
@@ -296,6 +268,38 @@ class ExperimentRecordingInterface(ExperimentInterface):
         
         for col in range(nb_col):
             self.parameters_frame.grid_columnconfigure(col, weight=1)
+
+
+    def display_session_experimental_parameters(self, params, disable = False):
+        
+        self.params_separator = ';'
+        for label, entry in self.parameters_entry_dict.items():
+            s=''
+            param_values = params[label]
+            for index, value in enumerate(param_values):
+                s+=value
+                if index<len(param_values)-1:
+                    s+=self.params_separator
+            entry.config(state="normal")
+            entry.insert(0,s)
+            if disable:
+                entry.config(state="disabled")
+
+    def display_session_recording_parameters(self, params, disable = False):
+        for entry_type in params.keys():
+            if entry_type == 'devices_ids':
+                for device_id in params[entry_type]:
+                    for device_check in self.device_checkbuttons:
+                        if device_check.cget("text").split(" ")[1] == device_id:
+                            device_check.state(['selected'])
+            elif entry_type == 'resolution':
+                resolution_str = f"{params[entry_type][0]}/{params[entry_type][1]}"
+                self.resolution_var.set(resolution_str)
+                self.resolution_checkbuttons[resolution_str].state(['selected'])
+            elif entry_type == 'fps':
+                self.fps_var.set(params[entry_type][0])
+        self.select_device()
+        self.select_resolution()
 
     def build_participants_layout(self):
         participant_infos_frame = ttk.Labelframe(self.root, text="Participant infos", padding=10)
