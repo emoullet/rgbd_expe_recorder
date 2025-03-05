@@ -1,12 +1,12 @@
 from setuptools import setup
 
 setup(
-    name='i_grip',
+    name='rgbd',
     version='0.0.0',    
     description='ReVOLuTION',
-    url='https://github.com/mylnior/i-GRIP',
+    url='https://github.com/emoullet/rgbd_expe_recorder',
     author='Etienne Moullet',
     author_email='etienne.moullet@inria.fr',
     license='MIT',
-    packages=['i_grip']
+    packages=['rgbd']
 )
