@@ -1,5 +1,5 @@
 
-from RgbdCameras2 import SimpleRgbdCam as RgbdCamera
+from rgbd.RgbdCameras2 import SimpleRgbdCam as RgbdCamera
 import time
 import numpy as np  
 import cv2
@@ -45,7 +45,7 @@ class ExperimentRecorder:
         
         while self.rgbd_camera.is_on():
             t = time.time()
-            success, img, map, rgb_timestamp, depth_timestamp = self.rgbd_camera.get_frame()
+            success, img, map, rgb_timestamp, depth_timestamp = self.rgbd_camera.get_last_frames()
             if not success:
                 # print("Failed to get frame.")
                 continue

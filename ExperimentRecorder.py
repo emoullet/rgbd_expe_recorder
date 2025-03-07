@@ -2,7 +2,7 @@
 
 import argparse
 import threading
-from RgbdCameras2 import SimpleRgbdCam as RgbdCamera
+from rgbd.RgbdCameras2 import SimpleRgbdCam as RgbdCamera
 import cv2
 import numpy as np
 import time
@@ -67,7 +67,7 @@ class ExperimentRecorder:
                 self.new_rec = False
                 self.recording = True
                 
-            success, img, map, rgb_timestamp, depth_timestamp = self.rgbd_camera.get_frame()
+            success, img, map, rgb_timestamp, depth_timestamp = self.rgbd_camera.get_last_frames()
             
             if not success:
                 continue

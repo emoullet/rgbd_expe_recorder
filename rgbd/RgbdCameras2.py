@@ -9,8 +9,8 @@ import threading
 
 class SimpleRgbdCam:
     _720P = (1280, 720)
-    _1080P = (1920., 1080.)
-    _480P = (640., 480.)
+    _1080P = (1920, 1080)
+    _480P = (640, 480)
     _RGB_MODE = 'RGB'
     _BGR_MODE = 'BGR'
     def __init__(self,
@@ -28,7 +28,7 @@ class SimpleRgbdCam:
         self.running = False
         self.fps_rgb = fps_rgb
         self.fps_depth = fps_depth if fps_depth is not None else fps_rgb
-        self.resolution = resolution
+        self.resolution = (int(resolution[0]), int(resolution[1]))
         self.show_rgb = show_rgb
         self.show_depth = show_depth
         self.show_stats = show_stats
@@ -41,7 +41,7 @@ class SimpleRgbdCam:
         self.build_device()
         
         self.cam_data = {}
-        self.cam_data['resolution'] = (int(self.resolution[0]), int(self.resolution[1]))
+        self.cam_data['resolution'] = self.resolution
         calibData = self.device.readCalibration()
         self.cam_data['matrix'] = np.array(calibData.getCameraIntrinsics(dai.CameraBoardSocket.RGB, self.cam_data['resolution'][0], self.cam_data['resolution'][1]))
         self.cam_data['hfov'] = calibData.getFov(dai.CameraBoardSocket.RGB)
@@ -72,9 +72,9 @@ class SimpleRgbdCam:
         monoLeft.setFps(self.fps_depth)
         monoRight.setFps(self.fps_depth)
         
-        # color = self.pipeline.create(dai.node.ColorCamera)
-        color = self.pipeline.createColorCamera()
-        color.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+        color = self.pipeline.create(dai.node.ColorCamera)
+        # color = self.pipeline.createColorCamera()
+        # color.setBoardSocket(dai.CameraBoardSocket.CAM_A)
         color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
         color.setCamera("color")
         if self.resolution == self._720P:
@@ -85,6 +85,15 @@ class SimpleRgbdCam:
         color.setInterleaved(True)
         color.setFps(self.fps_rgb)
         
+        color.initialControl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.CONTINUOUS_VIDEO)
+        color.initialControl.setAutoFocusTrigger()
+        
+        
+        self.expTime = 8000 # exposure time
+        self.sensIso = 1600 # ISO sensitivity
+        
+        color.initialControl.setManualExposure(self.expTime, self.sensIso)
+        
         if self.color_mode == self._RGB_MODE:
             color.setColorOrder(dai.ColorCameraProperties.ColorOrder.RGB)
             print("Setting RGB color mode") 
@@ -94,7 +103,7 @@ class SimpleRgbdCam:
         
         monoLeft.setNumFramesPool(2)
         monoRight.setNumFramesPool(2)
-        color.setNumFramesPool(2,2,2,2,2)
+        # color.setNumFramesPool(2,2,2,2,2)
         
         
         self.stereo = self.pipeline.create(dai.node.StereoDepth)
@@ -203,7 +212,7 @@ class SimpleRgbdCam:
             self.old_depth_timestamp = self.current_depth_timestamp
             # cv2.imshow("depth", depth_frame)
     
-    def next_frame(self):
+    def get_last_frames(self):
         
         success = True
         if self.rgb_frame is None or self.depth_frame is None or self.current_rgb_timestamp == 0 or self.current_depth_timestamp == 0:
