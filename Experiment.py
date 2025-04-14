@@ -885,7 +885,7 @@ class Participant:
             self.stop_current_trial()
         self.expe_running=False
         for rec in self.expe_recorders:
-            rec.stop_record()
+            rec.stop()
         if self.display_thread is not None:
             self.display_thread.join()
         print("Experiment stopped")     

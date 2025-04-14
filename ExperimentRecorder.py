@@ -128,12 +128,6 @@ class ExperimentRecorder:
         # recorder.release()
         # print(f"Finished saving video at {path_vid}")
         
-        # Save depth timestamps as gzip and csv
-        print(f"Saving depth timestamps at {path_depth_timestamps_gzip}")
-        depth_timestamps_df = pd.DataFrame({'Timestamps': depth_df['Timestamps']})
-        depth_timestamps_df.to_pickle(path_depth_timestamps_gzip, compression='gzip')
-        depth_timestamps_df.to_csv(path_depth_timestamps_csv, index=False)
-        print(f"Finished saving depth timestamps at {path_depth_timestamps_gzip}")
         
         # Save rgb timestamps as gzip and csv
         print(f"Saving rgb timestamps at {path_rgb_timestamps_gzip}")
@@ -150,6 +144,12 @@ class ExperimentRecorder:
         depth_df.to_pickle(path_depth_gzip, compression='gzip')        
         print(f"Finished saving depth map at {path_depth_gzip}")
         
+        # Save depth timestamps as gzip and csv
+        print(f"Saving depth timestamps at {path_depth_timestamps_gzip}")
+        depth_timestamps_df = pd.DataFrame({'Timestamps': depth_df['Timestamps']})
+        depth_timestamps_df.to_pickle(path_depth_timestamps_gzip, compression='gzip')
+        depth_timestamps_df.to_csv(path_depth_timestamps_csv, index=False)
+        print(f"Finished saving depth timestamps at {path_depth_timestamps_gzip}")
         print(f"Finished saving all files at {path}")
 
 
