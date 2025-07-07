@@ -2,8 +2,11 @@ import csv
 import itertools
 import os
 import random
+import subprocess
 import tkinter as tk
 from tkinter import messagebox, ttk
+import pickle
+
 import threading
 import cv2
 import pandas as pd
@@ -158,7 +161,9 @@ class Session:
         self.processing_path = os.path.join(experiment_path, f"{self.folder}_processing")
         self.pre_processing_path = os.path.join(self.processing_path, "Pre_processing")
         self.replay_path = os.path.join(self.processing_path, "Replay")
-        self.analysis_path = os.path.join(self.processing_path, "Analysis")
+        self.analysis_path = os.path.join(self.processing_path, "Analysis")        
+        self.evaluation_path = os.path.join(f'{self.processing_path}/Evaluation')
+        self.plot_path = os.path.join(f'{self.processing_path}/Plots')
         
         self.mode = mode
         
@@ -198,8 +203,9 @@ class Session:
         
         self.is_new = not os.path.exists(self.path)
         self.experimental_parameters = None
-        self.params_separator = ';' #separator used in the experiment parameters csv file
-        self.parameters_list = self._DEFAULT_PARAMETERS_LIST
+        self.params_separators = [';', ','] #separator used in the experiment parameters csv file
+        self.params_separator = self.params_separators[0] #default separator used in the experiment parameters csv file
+        self.parameters_list = self._DEFAULT_PARAMETERS_LIST #list of parameters to be used in the experiment, can be modified by the user
         
         if self.is_new :
             if self.mode != 'Recording':
@@ -269,7 +275,7 @@ class Session:
         else:
             self.experimental_parameters = pd.read_csv(parameters_path)
             print(f"Experiment parameters read from '{parameters_path}'")
-        
+       
     def read_experimental_parameters(self):
         csv_path = os.path.join(self.path, f'{self.folder}{self._EXPERIMENTAL_PARAMETERS_SUFFIX}')
         if not os.path.exists(csv_path):
@@ -279,18 +285,26 @@ class Session:
             self.all_data_available = False
             self.missing_data.append('experimental parameters')
         else:
-            print(f"Reading experimental parameters from '{csv_path}'")
             self.experimental_parameters = {}
+            reinit_reading = False
             with open(csv_path, "r") as csvfile:
-                reader = csv.reader(csvfile)
-                self.parameters_list = []
+                reader = csv.reader(csvfile, delimiter=self.params_separator)
                 for row in reader:
                     param_type = row[0]
+                    if self.params_separators[1] in param_type:
+                        self.params_separator = self.params_separators[1]
+                        reinit_reading = True
+                        break
+                    
                     param_list = row[1:]
+                    #keep only non-empty parameters
+                    param_list = [param for param in param_list if param != '']
                     self.experimental_parameters[param_type] = param_list
-                    self.parameters_list.append(param_type)
-            print(f"Experimental parameters read from '{csv_path}'")
-            print(f"Experimental parameters: \n{self.experimental_parameters}")
+            if reinit_reading:
+                self.read_experimental_parameters()
+            else:
+                print(f"Experimental parameters read from '{csv_path}'")
+                self.parameters_list = list(self.experimental_parameters.keys())
     
     def set_experimental_parameters(self, parameters):
         self.experimental_parameters = parameters
@@ -379,11 +393,9 @@ class Session:
             self.all_data_available = False
         else:
             self.participants_database = pd.read_csv(participants_csv_path)
-            print(f"Participants database imported from '{participants_csv_path}'")
-            print(f"Participants database: \n{self.participants_database}")
             print(f"Pseudos database imported from '{participants_csv_path}'")
-        #add a column "To Process" to the database, with each row filled with True
-        self.participants_database["To Process"] = self.preselect_all_participants
+            #add a column "To Process" to the database, with each row filled with True
+            self.participants_database["To Process"] = self.preselect_all_participants
             
             
     def import_instructions_languages(self):
@@ -555,6 +567,7 @@ class Session:
         self.fetch_participants_to_process()
         self.build_progress_display()
         self.continue_processing = True
+        self.evaluate()
         for device_id, device_data in self.devices_data.items():
             print(f"Building experiment analyser for device {device_id} with device_data: resolution {device_data['resolution']}, matrix {device_data['matrix']}")
             self.current_device_id = device_id
@@ -585,7 +598,62 @@ class Session:
             if self.continue_processing == False:
                 break
             print(f"Experiment analyser for device {device_id} stopped")
+        self.evaluate()
         print("All selected participants analysed")
+    
+    def evaluate(self, device_id=None):
+        if device_id is None:
+            summary_files = [f for f in os.listdir(self.evaluation_path) if f.endswith("summary.csv") and "global" not in f]
+            global_summary_path = os.path.join(self.evaluation_path, "global_summary.csv")
+        else:
+            summary_files = [f for f in os.listdir(self.evaluation_path) if f.endswith("summary.csv") and device_id in f]
+            global_summary_path = os.path.join(self.evaluation_path, f"global_summary_{device_id}.csv")
+            
+        if len(summary_files) == 0:
+            print(f"No summary file found for device {device_id} in {self.evaluation_path}")
+            return
+        first_summary = pd.read_csv(os.path.join(self.evaluation_path, summary_files[0]))        
+        metrics = first_summary.iloc[:, 0]
+        
+        global_evaluation_df = pd.DataFrame(columns=['Participant']+list(metrics))
+        for i, summary_file in enumerate(summary_files):
+            participant_and_device_id = summary_file.split("_summary")[0]
+            summary = pd.read_csv(os.path.join(self.evaluation_path, summary_file))
+            print(f"Summary for device {device_id}:\n{summary}")
+            #get metrics that are in the first column, and the values in the second column, starting from the second row
+            metrics = summary.iloc[:, 0]
+            global_evaluation_df.loc[i, 'Participant'] = participant_and_device_id
+            for j, metric in enumerate(metrics):
+                global_evaluation_df.loc[i, metric] = summary.iloc[j, 1]
+                
+        for j, metric in enumerate(metrics):
+            sum = global_evaluation_df[metric].sum()
+            mean = global_evaluation_df[metric].mean()
+            std = global_evaluation_df[metric].std()
+            min = global_evaluation_df[metric].min()
+            max = global_evaluation_df[metric].max()
+            
+            global_evaluation_df.loc['Sum', metric] = sum
+            global_evaluation_df.loc['Mean', metric] = mean                                         
+            global_evaluation_df.loc['Std', metric] = std
+            global_evaluation_df.loc['Min', metric] = min
+            global_evaluation_df.loc['Max', metric] = max
+            
+            global_evaluation_df.loc['Sum', 'Participant'] = 'Sum'
+            global_evaluation_df.loc['Mean', 'Participant'] = 'Mean'
+            global_evaluation_df.loc['Std', 'Participant'] = 'Std'
+            global_evaluation_df.loc['Min', 'Participant'] = 'Min'
+            global_evaluation_df.loc['Max', 'Participant'] = 'Max'
+        
+        #drop index
+        global_evaluation_df = global_evaluation_df.reset_index(drop=True)
+        # transpose the dataframe
+        global_evaluation_df = global_evaluation_df.T
+        
+        
+        #save the global summary withouth columns names
+        global_evaluation_df.to_csv(global_summary_path, header=False)
+                
         
     def interrupt_processing(self):
         print("Interrupting pre-processing...")
@@ -725,6 +793,8 @@ class Participant:
         self.pre_processing_path = os.path.join(f'{self.session_path}_processing/Pre_processing', self.pseudo)
         self.replay_path = os.path.join(f'{self.session_path}_processing/Replay', self.pseudo)
         self.analyse_path = os.path.join(f'{self.session_path}_processing/Analysis', self.pseudo)
+        self.evaluation_path = os.path.join(f'{self.session_path}_processing/Evaluation')
+        self.plot_path = os.path.join(f'{self.session_path}_processing/Plots', self.pseudo)
         
         if self.mode == 'Pre-processing':
             self.source_path = self.path
@@ -753,7 +823,12 @@ class Participant:
                 answer = messagebox.askyesno(f"Participant analysis folder not found", f"Participant analysis folder not found in {self.analyse_path}. Do you want to create a new one?")
                 if answer:
                     os.makedirs(self.analyse_path)
-                    print(f"New participant analysis folder created in {self.analyse_path}")         
+                    print(f"New participant analysis folder created in {self.analyse_path}")     
+            if not os.path.exists(self.plot_path):
+                answer = messagebox.askyesno(f"Participant plot folder not found", f"Participant plot folder not found in {self.plot_path}. Do you want to create a new one?")
+                if answer:
+                    os.makedirs(self.plot_path)
+                    print(f"New participant plot folder created in {self.plot_path}")
         
         self.combinations_path = os.path.join(self.path, f"{self.pseudo}_combinations.csv")
         self.data_csv_path = os.path.join(self.path, f"{self.pseudo}_data.csv")
@@ -934,7 +1009,7 @@ class Participant:
         print(f"Stopped {self.current_trial.label}")
         
     def display_task(self):
-        rotate = False
+        rotate = True
         while self.expe_running:
             imgs=[]
             for rec in self.expe_recorders:
@@ -1183,27 +1258,452 @@ class Participant:
         print(f"Processed pseudo '{self.pseudo}'")
         print(f"Participant '{self.pseudo}' missing trial {len(self.missing_trial_folders)} folders ")
     
-    def analyse(self, experiment_analyser):
+    def analyse(self, experiment_analyser, do_analyse=True, evaluate=False, plot=False):
         print( f"Analyzing pseudo '{self.pseudo}'")
         global_answer = None
         analyser_ID = experiment_analyser.get_device_id()
-        for trial in self.analyzable_trials:
-            if trial.was_analysed(device_ID=analyser_ID):
-                if global_answer is None:
-                    answer = messagebox.askyesnocancel(f"Trial already analysed", f"Trial {trial.label} already analysed. Do you want to re-analyse it?")
-                    global_apply = messagebox.askyesnocancel("Do you want to apply this answer to all trials?", f"Do you want to apply this answer to all trials for device {analyser_ID} ?")
-                    if global_apply:
-                        global_answer = answer
-                else:
-                    answer = global_answer
-                if answer != True:
-                    continue
-            print(f"Analyzing trial {trial.label}")
-            self.progress_display.set_current(f"Analyzing trial {trial.label}")  
-            self.progress_window.update()
-            trial.analyse(experiment_analyser)
-            self.progress_display.increment()
-            self.progress_window.update()
+        
+        if do_analyse:
+            evaluation_dict = {}
+            for trial in self.analyzable_trials:
+                if trial.was_analysed(device_ID=analyser_ID):
+                    if global_answer is None:
+                        answer = messagebox.askyesnocancel(f"Trial already analysed", f"Trial {trial.label} already analysed. Do you want to re-analyse it?")
+                        global_apply = messagebox.askyesnocancel("Do you want to apply this answer to all trials?", f"Do you want to apply this answer to all trials for device {analyser_ID} ?")
+                        if global_apply:
+                            global_answer = answer
+                    else:
+                        answer = global_answer
+                    if answer != True:
+                        continue
+                print(f"Analyzing trial {trial.label}")
+                self.progress_display.set_current(f"Analyzing trial {trial.label}")  
+                self.progress_window.update()
+                trial_evaluation = trial.analyse(experiment_analyser, evaluate=evaluate)
+                self.progress_display.increment()
+                self.progress_window.update()
+                if trial_evaluation is not None:
+                    evaluation_dict[trial.label] = trial_evaluation
+                
+        if evaluate:
+            self.evaluate(analyser_ID)
+        
+        if plot:
+            self.plot_stuff(analyser_ID)
+    
+    def plot_stuff(self, device_ID):
+        # list all files in the analysis folder
+        analysis_files = [f for f in os.listdir(self.analyse_path) if os.path.isfile(os.path.join(self.analyse_path, f)) and f.endswith('.csv') and device_ID in f]
+        if len(analysis_files) == 0:
+            print(f"No analysis files found in '{self.analyse_path}'")
+            return
+        #order the files by label
+        analysis_files.sort()
+        for analysis_file in analysis_files:
+            label = analysis_file.split('_target')[0]
+            hand = label.split('_')[4]
+            target = label.split('_')[3]
+            mode = label.split('_')[6]
+            target_data = pd.read_csv(os.path.join(self.analyse_path, analysis_file))
+            print(f"Ploting trial {label}")
+            # define plot path from the analysis path, replacing _target_data.csv by _plot.png
+            plot_path = os.path.join(self.plot_path, f"{label}_plot.eps")
+            Trial.plot_target_data(target_data, hand, plot_path, device_ID, target,mode)
+            
+    def evaluate(self, device_ID):
+        # read the trials_check file
+        check_path = os.path.join(self.pre_processing_path, f"{self.pseudo}_trials_check.csv")
+        if os.path.exists(check_path):
+            trials_check_df = pd.read_csv(check_path)
+        else:                                                                    
+            print(f"Trials check file not found in '{check_path}'")
+            trials_check_df=None
+        
+        # list all files in the analysis folder
+        analysis_files = [f for f in os.listdir(self.analyse_path) if os.path.isfile(os.path.join(self.analyse_path, f)) and f.endswith('.csv') and device_ID in f]
+        if len(analysis_files) == 0:
+            print(f"No analysis files found in '{self.analyse_path}'")
+            return
+
+        
+        #order the files by label
+        analysis_files.sort()
+        evaluation_dict = {}
+        for analysis_file in analysis_files:
+            label = analysis_file.split('_cam')[0]
+            hand = label.split('_')[4]
+            grip = label.split('_')[5]
+            target = label.split('_')[3]
+            mode = label.split('_')[6]
+            target_data = pd.read_csv(os.path.join(self.analyse_path, analysis_file))
+            print(f"Evaluating trial {label}")
+            eval_data = Trial.evaluate_target_data(target_data, device_ID=device_ID, hand=hand, target=target, mode=mode, grip=grip)
+            #find the row in the trials_check_df corresponding to the label and the corresponding value in column 'Combination OK'
+            if eval_data is not None:
+                if trials_check_df is not None:
+                    combi_ok = trials_check_df.loc[trials_check_df['Trial Folder'] == label, 'Combination OK'].values[0]
+                    face_ok = trials_check_df.loc[trials_check_df['Trial Folder'] == label, 'Face OK'].values[0]
+                    eval_data['combi_ok'] = combi_ok
+                    eval_data['face_ok'] = face_ok
+                evaluation_dict[label] = eval_data
+
+        evaluation_df = pd.DataFrame.from_dict(evaluation_dict, orient='index')
+        df_path = os.path.join(self.evaluation_path, f"{self.pseudo}_{device_ID}_evaluation.csv")
+        evaluation_df.to_csv(df_path, index=True)
+        
+        nb_trials = len(analysis_files)
+        nb_cam_same=0
+        nb_cam_opposite=0
+        nb_executed=0
+        nb_simulated=0
+        for index, row in evaluation_df.iterrows():
+            if row['cam_hand_position']=='same':
+                nb_cam_same += 1
+            if row['cam_hand_position']=='opposite':
+                nb_cam_opposite += 1
+            if row['movement_mode'] == 'executed':
+                nb_executed += 1
+            if row['movement_mode'] == 'simulated':
+                nb_simulated += 1
+        # keep only valid trials and combi_ok
+        evaluation_df = evaluation_df[evaluation_df['is_trial_valid'] & evaluation_df['combi_ok']]
+        
+        
+        expected_objects = sc.RigidObject.LABEL_EXPE_NAMES.values()
+        grips = ['palmar', 'pinch']
+        nb_trials_valid_by_objects = {}
+        for obj in expected_objects:
+            nb_trials_valid_by_objects['nb_trials_valid_for_'+obj] = evaluation_df[evaluation_df['task_target'] == obj]['is_trial_valid'].sum()
+            
+        nb_trials_valid_by_grip = {}
+        for grip in grips:
+            nb_trials_valid_by_grip['nb_trials_valid_for_'+grip] = evaluation_df[evaluation_df['task_grip'] == grip]['is_trial_valid'].sum()
+
+        nb_target_found_by_objects = {}
+        for obj in expected_objects:
+            nb_target_found_by_objects['nb_target_found_'+obj] = evaluation_df[evaluation_df['task_target'] == obj]['task_target_idenfication_successful'].sum()
+        nb_grip_found_by_objects = {}
+        for obj in expected_objects:
+            nb_grip_found_by_objects['nb_grip_found_'+obj] = evaluation_df[evaluation_df['task_target'] == obj]['task_grip_idenfication_successful'].sum()
+        nb_grip_found_by_grip = {}
+        for grip in grips:
+            nb_grip_found_by_grip['nb_grip_found_'+grip] = evaluation_df[evaluation_df['task_grip'] == grip]['task_grip_idenfication_successful'].sum()
+        
+        nb_trials_valid = evaluation_df['is_trial_valid'].sum()
+        nb_target_successful = 0
+        nb_target_successful_distance = 0
+        nb_target_successful_distance_derivative = 0
+        nb_target_successful_future_distance = 0
+        nb_target_successful_impacts = 0
+        nb_target_successful_max_metric = 0
+        
+        nb_grip_successful = 0
+        nb_trials_invalid_and_target_successful = 0
+        nb_trials_invalid_and_grip_successful = 0
+        
+        nb_valid_and_cam_same = 0
+        nb_target_successful_and_cam_same = 0
+        nb_grip_successful_and_cam_same = 0
+        
+        nb_valid_and_cam_opposite = 0
+        nb_target_successful_and_cam_opposite = 0
+        nb_grip_successful_and_cam_opposite = 0
+        
+        nb_valid_and_executed = 0
+        nb_target_successful_and_executed = 0
+        nb_grip_successful_and_executed = 0
+        
+        nb_valid_and_simulated = 0
+        nb_target_successful_and_simulated = 0
+        nb_grip_successful_and_simulated = 0
+        
+        total_nb_frames = evaluation_df['trial_nb_frames'].sum()
+        total_nb_achievable_frames = evaluation_df['trial_nb_achievable_task_detections'].sum()
+        total_frames_target_found = evaluation_df['nb_target_found'].sum()
+        
+        
+        metrics = ['impacts', 'distance', 'future_distance', 'distance_derivative', 'max_metric']
+
+        eval_df_target_found = evaluation_df[evaluation_df['task_target_idenfication_successful']]    
+        
+        sum_target_found_margin = eval_df_target_found['target_found_margin'].sum()
+        mean_target_found_margin = eval_df_target_found['target_found_margin'].mean()
+        sd_target_found_margin = eval_df_target_found['target_found_margin'].std()
+        sum_target_found_delay = eval_df_target_found['target_found_delay'].sum()
+        mean_target_found_delay = eval_df_target_found['target_found_delay'].mean()
+        sd_target_found_delay = eval_df_target_found['target_found_delay'].std()   
+         
+        eval_df_target_found_met =  {}
+        sum_target_found_margin_met = {}
+        sum_target_found_delay_met = {}
+        for metric in metrics:
+            eval_df_target_found_met[metric] = evaluation_df[evaluation_df[f'task_target_idenfication_successful_{metric}']]  
+            sum_target_found_margin_met[metric] = eval_df_target_found_met[metric][f'target_found_margin_{metric}'].sum()
+            sum_target_found_delay_met[metric] = eval_df_target_found_met[metric][f'target_found_delay_{metric}'].sum()
+        
+        
+        eval_df_grip_found = evaluation_df[evaluation_df['task_grip_idenfication_successful']]
+        
+        sum_grip_found_margin = eval_df_grip_found['grip_found_margin'].sum()
+        mean_grip_found_margin = eval_df_grip_found['grip_found_margin'].mean()
+        sd_grip_found_margin = eval_df_grip_found['grip_found_margin'].std()
+        sum_grip_found_delay = eval_df_grip_found['grip_found_delay'].sum()        
+        mean_grip_found_delay = eval_df_grip_found['grip_found_delay'].mean()
+        sd_grip_found_delay = eval_df_grip_found['grip_found_delay'].std()
+        
+        # eval_df_grip_found_met =  {}
+        # sum_grip_found_margin_met = {}
+        # sum_grip_found_delay_met = {}
+        # for metric in metrics:
+        #     eval_df_grip_found_met[metric] = evaluation_df[evaluation_df[f'task_grip_idenfication_successful_{metric}']]  
+        #     sum_grip_found_margin_met[metric] = eval_df_grip_found_met[metric][f'grip_found_margin_{metric}']
+        #     sum_grip_found_delay_met[metric] = eval_df_grip_found_met[metric][f'grip_found_delay_{metric}']
+        
+        
+        mean_trial_duration = evaluation_df['trial_duration'].mean()
+        sum_trial_duration = evaluation_df['trial_duration'].sum()
+        sd_trial_duration = evaluation_df['trial_duration'].std()
+        mean_movement_duration = evaluation_df['movement_duration'].mean()
+        sum_movement_duration = evaluation_df['movement_duration'].sum()
+        sd_movement_duration = evaluation_df['movement_duration'].std()
+        
+        mean_time_to_target_rmse = evaluation_df['time_to_target_rmse'].mean()
+        
+        for index, row in evaluation_df.iterrows():
+            if row['is_trial_valid'] and row['task_target_idenfication_successful']:
+                nb_target_successful += 1
+            if row['is_trial_valid'] and row['task_target_idenfication_successful_distance']:
+                nb_target_successful_distance += 1
+            if row['is_trial_valid'] and row['task_target_idenfication_successful_distance_derivative']:
+                nb_target_successful_distance_derivative += 1
+            if row['is_trial_valid'] and row['task_target_idenfication_successful_future_distance']:
+                nb_target_successful_future_distance += 1
+            if row['is_trial_valid'] and row['task_target_idenfication_successful_impacts']:
+                nb_target_successful_impacts += 1
+            if row['is_trial_valid'] and row['task_target_idenfication_successful_max_metric']:
+                nb_target_successful_max_metric += 1
+            if not row['is_trial_valid'] and row['task_target_idenfication_successful']:
+                nb_trials_invalid_and_target_successful += 1
+            if not row['is_trial_valid'] and row['task_grip_idenfication_successful']:
+                nb_trials_invalid_and_grip_successful += 1
+            if row['is_trial_valid'] and row['task_grip_idenfication_successful']:
+                nb_grip_successful += 1
+            if row['is_trial_valid']and row['cam_hand_position']=='same':
+                nb_valid_and_cam_same += 1
+                if row['task_target_idenfication_successful']:
+                    nb_target_successful_and_cam_same += 1
+                if row['task_grip_idenfication_successful']:
+                    nb_grip_successful_and_cam_same += 1
+            if row['is_trial_valid']and row['cam_hand_position']=='opposite':
+                nb_valid_and_cam_opposite += 1
+                if row['task_target_idenfication_successful']:
+                    nb_target_successful_and_cam_opposite += 1
+                if row['task_grip_idenfication_successful']:
+                    nb_grip_successful_and_cam_opposite += 1
+            if row['is_trial_valid']and row['movement_mode'] == 'executed':
+                nb_valid_and_executed += 1
+                if row['task_target_idenfication_successful']:
+                    nb_target_successful_and_executed += 1
+                if row['task_grip_idenfication_successful']:
+                    nb_grip_successful_and_executed += 1
+            if row['is_trial_valid']and row['movement_mode'] == 'simulated':
+                nb_valid_and_simulated += 1
+                if row['task_target_idenfication_successful']:
+                    nb_target_successful_and_simulated += 1
+                if row['task_grip_idenfication_successful']:
+                    nb_grip_successful_and_simulated += 1
+        
+        total_nb_direction_correct = evaluation_df['nb_direction_correct'].sum()
+        total_nb_impacts_correct = evaluation_df['nb_impacts_correct'].sum()
+        total_nb_distance_correct = evaluation_df['nb_distance_correct'].sum()
+        total_nb_future_distance_correct = evaluation_df['nb_future_distance_correct'].sum()
+        total_nb_distance_derivative_correct = evaluation_df['nb_distance_derivative_correct'].sum()
+        total_nb_max_metric_correct = evaluation_df['nb_max_metric_correct'].sum()
+        
+        total_nb_direction_correct_when_target_not_found = evaluation_df['nb_direction_correct_when_most_probable_wrong'].sum()        
+        total_nb_impacts_correct_when_target_not_found = evaluation_df['nb_impacts_correct_when_most_probable_wrong'].sum()
+        total_nb_distance_correct_when_target_not_found = evaluation_df['nb_distance_correct_when_most_probable_wrong'].sum()
+        total_nb_future_distance_correct_when_target_not_found = evaluation_df['nb_future_distance_correct_when_most_probable_wrong'].sum()
+        total_nb_distance_derivative_correct_when_target_not_found = evaluation_df['nb_distance_derivative_correct_when_most_probable_wrong'].sum()
+        
+        total_nb_direction_correct_when_target_not_found_beginning = evaluation_df['nb_direction_correct_when_most_probable_wrong_beginning'].sum()
+        total_nb_impacts_correct_when_target_not_found_beginning = evaluation_df['nb_impacts_correct_when_most_probable_wrong_beginning'].sum()
+        total_nb_distance_correct_when_target_not_found_beginning = evaluation_df['nb_distance_correct_when_most_probable_wrong_beginning'].sum()
+        total_nb_future_distance_correct_when_target_not_found_beginning = evaluation_df['nb_future_distance_correct_when_most_probable_wrong_beginning'].sum()
+        total_nb_distance_derivative_correct_when_target_not_found_beginning = evaluation_df['nb_distance_derivative_correct_when_most_probable_wrong_beginning'].sum()
+        
+        total_nb_direction_correct_when_target_not_found_end = evaluation_df['nb_direction_correct_when_most_probable_wrong_end'].sum()
+        total_nb_impacts_correct_when_target_not_found_end = evaluation_df['nb_impacts_correct_when_most_probable_wrong_end'].sum()
+        total_nb_distance_correct_when_target_not_found_end = evaluation_df['nb_distance_correct_when_most_probable_wrong_end'].sum()
+        total_nb_future_distance_correct_when_target_not_found_end = evaluation_df['nb_future_distance_correct_when_most_probable_wrong_end'].sum()
+        total_nb_distance_derivative_correct_when_target_not_found_end = evaluation_df['nb_distance_derivative_correct_when_most_probable_wrong_end'].sum()
+        
+        total_nb_target_not_found_but_individual_metrics_correct = evaluation_df['nb_target_not_found_but_individual_metrics_correct'].sum()
+        
+        if nb_trials_valid == 0:
+            ratio_target_successful = 0
+            ratio_grip_successful = 0
+        else:
+            ratio_target_successful = nb_target_successful/nb_trials_valid
+            ratio_grip_successful = nb_grip_successful/nb_trials_valid
+            
+        if nb_valid_and_cam_same == 0:
+            ratio_target_successful_and_cam_same = 0
+            ratio_grip_successful_and_cam_same = 0
+        else:
+            ratio_target_successful_and_cam_same = nb_target_successful_and_cam_same/nb_valid_and_cam_same
+            ratio_grip_successful_and_cam_same = nb_grip_successful_and_cam_same/nb_valid_and_cam_same
+        
+        if nb_valid_and_cam_opposite == 0:
+            ratio_target_successful_and_cam_opposite = 0
+            ratio_grip_successful_and_cam_opposite = 0
+        else:
+            ratio_target_successful_and_cam_opposite = nb_target_successful_and_cam_opposite/nb_valid_and_cam_opposite
+            ratio_grip_successful_and_cam_opposite = nb_grip_successful_and_cam_opposite/nb_valid_and_cam_opposite
+        
+        summary = { 'nb_trials': nb_trials,
+                   'nb_cam_same': nb_cam_same,
+                   'nb_cam_opposite': nb_cam_opposite,
+                   'nb_executed': nb_executed,
+                     'nb_simulated': nb_simulated,
+                   
+                   
+                   'nb_trials_valid': nb_trials_valid, 
+                   'nb_valid_and_cam_same': nb_valid_and_cam_same,
+                   'nb_valid_and_cam_opposite': nb_valid_and_cam_opposite,
+                   'nb_valid_and_executed': nb_valid_and_executed,
+                   'nb_valid_and_simulated': nb_valid_and_simulated,
+                   
+                   'nb_target_successful': nb_target_successful, 
+                   'nb_target_successful_distance': nb_target_successful_distance,
+                     'nb_target_successful_distance_derivative': nb_target_successful_distance_derivative,
+                        'nb_target_successful_future_distance': nb_target_successful_future_distance,
+                        'nb_target_successful_impacts': nb_target_successful_impacts,
+                        'nb_target_successful_max_metric': nb_target_successful_max_metric,
+                        
+                   'nb_target_successful_and_cam_same': nb_target_successful_and_cam_same,
+                   'nb_target_successful_and_cam_opposite': nb_target_successful_and_cam_opposite,
+                   'nb_target_successful_and_executed': nb_target_successful_and_executed,
+                   'nb_target_successful_and_simulated': nb_target_successful_and_simulated,
+                   
+                   'total_nb_frames': total_nb_frames,
+                   'total_nb_achievable_frames': total_nb_achievable_frames,
+                   'total_nb_frames_target_found': total_frames_target_found,
+                   'total_nb_frames_target_not_found': total_nb_achievable_frames-total_frames_target_found,
+                    'nb_target_not_found_but_individual_metrics_correct': total_nb_target_not_found_but_individual_metrics_correct,
+                   
+                    'nb_direction_correct': total_nb_direction_correct,
+                   'nb_impacts_correct': total_nb_impacts_correct,
+                    'nb_distance_correct': total_nb_distance_correct,
+                    'nb_future_distance_correct': total_nb_future_distance_correct,
+                    'nb_distance_derivative_correct': total_nb_distance_derivative_correct,
+                    'nb_max_metric_correct': total_nb_max_metric_correct,
+                    
+                    
+                    'nb_direction_correct_when_target_not_found': total_nb_direction_correct_when_target_not_found,
+                    'nb_impacts_correct_when_target_not_found': total_nb_impacts_correct_when_target_not_found,
+                    'nb_distance_correct_when_target_not_found': total_nb_distance_correct_when_target_not_found,
+                    'nb_future_distance_correct_when_target_not_found': total_nb_future_distance_correct_when_target_not_found,
+                    'nb_distance_derivative_correct_when_target_not_found': total_nb_distance_derivative_correct_when_target_not_found,
+                    
+                    'nb_direction_correct_when_target_not_found_beginning': total_nb_direction_correct_when_target_not_found_beginning,
+                    'nb_impacts_correct_when_target_not_found_beginning': total_nb_impacts_correct_when_target_not_found_beginning,
+                    'nb_distance_correct_when_target_not_found_beginning': total_nb_distance_correct_when_target_not_found_beginning,
+                    'nb_future_distance_correct_when_target_not_found_beginning': total_nb_future_distance_correct_when_target_not_found_beginning,
+                    'nb_distance_derivative_correct_when_target_not_found_beginning': total_nb_distance_derivative_correct_when_target_not_found_beginning,
+                    
+                    'nb_direction_correct_when_target_not_found_end': total_nb_direction_correct_when_target_not_found_end,
+                    'nb_impacts_correct_when_target_not_found_end': total_nb_impacts_correct_when_target_not_found_end,
+                    'nb_distance_correct_when_target_not_found_end': total_nb_distance_correct_when_target_not_found_end,
+                    'nb_future_distance_correct_when_target_not_found_end': total_nb_future_distance_correct_when_target_not_found_end,
+                    'nb_distance_derivative_correct_when_target_not_found_end': total_nb_distance_derivative_correct_when_target_not_found_end,
+                    
+                    'ratio_direction_correct': total_nb_direction_correct/total_nb_achievable_frames,
+                    'ratio_impacts_correct': total_nb_impacts_correct/total_nb_achievable_frames,
+                    'ratio_distance_correct': total_nb_distance_correct/total_nb_achievable_frames,
+                    'ratio_distance_derivative_correct': total_nb_distance_derivative_correct/total_nb_achievable_frames,
+                    
+                    'ratio_direction_correct_when_target_not_found': total_nb_direction_correct_when_target_not_found/(total_nb_achievable_frames-total_frames_target_found),
+                    'ratio_impacts_correct_when_target_not_found': total_nb_impacts_correct_when_target_not_found/(total_nb_achievable_frames-total_frames_target_found),
+                    'ratio_distance_correct_when_target_not_found': total_nb_distance_correct_when_target_not_found/(total_nb_achievable_frames-total_frames_target_found),
+                    'ratio_distance_derivative_correct_when_target_not_found': total_nb_distance_derivative_correct_when_target_not_found/(total_nb_achievable_frames-total_frames_target_found),
+                    
+                    
+                   'ratio_target_successful': ratio_target_successful, 
+                   'ratio_target_successful_and_cam_same': ratio_target_successful_and_cam_same,
+                   'ratio_target_successful_and_cam_opposite': ratio_target_successful_and_cam_opposite,
+                   
+                   'nb_grip_successful': nb_grip_successful, 
+                   'nb_grip_successful_and_cam_same': nb_grip_successful_and_cam_same,
+                   'nb_grip_successful_and_cam_opposite': nb_grip_successful_and_cam_opposite,
+                   'nb_grip_successful_and_executed': nb_grip_successful_and_executed,
+                   'nb_grip_successful_and_simulated': nb_grip_successful_and_simulated,
+                   
+                   'ratio_grip_successful': ratio_grip_successful,
+                   'ratio_grip_successful_and_cam_same': ratio_grip_successful_and_cam_same,
+                   'ratio_grip_successful_and_cam_opposite': ratio_grip_successful_and_cam_opposite,
+                   'ratio_grip_successful_and_executed': nb_grip_successful_and_executed/nb_valid_and_executed,
+                   'ratio_grip_successful_and_simulated': nb_grip_successful_and_simulated/nb_valid_and_simulated,
+                   
+                   'nb_trials_invalid_and_target_successful': nb_trials_invalid_and_target_successful,
+                    'nb_trials_invalid_and_grip_successful': nb_trials_invalid_and_grip_successful,
+                    
+                    'sum_target_found_margin': sum_target_found_margin,
+                    'mean_target_found_margin': mean_target_found_margin,
+                    'sd_target_found_margin': sd_target_found_margin,
+                    'sum_grip_found_margin': sum_grip_found_margin,
+                    'mean_grip_found_margin': mean_grip_found_margin,
+                    'sd_grip_found_margin': sd_grip_found_margin,
+                    
+                    'sum_target_found_delay': sum_target_found_delay,
+                    'mean_target_found_delay': mean_target_found_delay,
+                    'sd_target_found_delay': sd_target_found_delay,
+                    'sum_grip_found_delay': sum_grip_found_delay,
+                    'mean_grip_found_delay': mean_grip_found_delay,
+                    'sd_grip_found_delay': sd_grip_found_delay,
+                    
+                    'sum_target_found_margin_impacts': sum_target_found_margin_met['impacts'],
+                    'sum_target_found_margin_distance': sum_target_found_margin_met['distance'],
+                    'sum_target_found_margin_future_distance': sum_target_found_margin_met['future_distance'],
+                    'sum_target_found_margin_distance_derivative': sum_target_found_margin_met['distance_derivative'],
+                    'sum_target_found_margin_max_metric': sum_target_found_margin_met['max_metric'],
+                    
+                    'sum_target_found_delay_impacts': sum_target_found_delay_met['impacts'],
+                    'sum_target_found_delay_distance': sum_target_found_delay_met['distance'],
+                    'sum_target_found_delay_future_distance': sum_target_found_delay_met['future_distance'],
+                    'sum_target_found_delay_distance_derivative': sum_target_found_delay_met['distance_derivative'],
+                    'sum_target_found_delay_max_metric': sum_target_found_delay_met['max_metric'],
+                    
+                    # 'sum_grip_found_margin_impacts': sum_grip_found_margin_met['impacts'],
+                    # 'sum_grip_found_margin_distance': sum_grip_found_margin_met['distance'],    
+                    # 'sum_grip_found_margin_future_distance': sum_grip_found_margin_met['future_distance'],
+                    # 'sum_grip_found_margin_distance_derivative': sum_grip_found_margin_met['distance_derivative'],
+                    # 'sum_grip_found_margin_max_metric': sum_grip_found_margin_met['max_metric'],
+                    
+                    # 'sum_grip_found_delay_impacts': sum_grip_found_delay_met['impacts'],
+                    # 'sum_grip_found_delay_distance': sum_grip_found_delay_met['distance'],
+                    # 'sum_grip_found_delay_future_distance': sum_grip_found_delay_met['future_distance'],
+                    # 'sum_grip_found_delay_distance_derivative': sum_grip_found_delay_met['distance_derivative'],
+                    # 'sum_grip_found_delay_max_metric': sum_grip_found_delay_met['max_metric'],
+                    
+                    
+                    'sum_trial_duration': sum_trial_duration,
+                    'mean_trial_duration': mean_trial_duration,
+                    'sd_trial_duration': sd_trial_duration,
+                    'sum_movement_duration': sum_movement_duration,
+                    'mean_movement_duration': mean_movement_duration,
+                    'sd_movement_duration': sd_movement_duration,
+                    
+                   'mean_time_to_target_rmse': mean_time_to_target_rmse,
+                   **nb_trials_valid_by_objects,
+                     **nb_trials_valid_by_grip,
+                        **nb_target_found_by_objects,
+                        **nb_grip_found_by_objects,
+                        **nb_grip_found_by_grip
+                   }
+        summary_df = pd.DataFrame.from_dict(summary, orient='index')
+        summary_df.to_csv(os.path.join(self.evaluation_path, f"{self.pseudo}_{device_ID}_summary.csv"), index=True)
+            
     
     def get_number_of_trials(self):
         return len(self.available_trials)
@@ -1291,8 +1791,6 @@ class Participant:
         self.stop_experiment()
         
 class Trial:
-    
-    #TODO : adapt to the new instructions format
     def __init__(self, label, participant_path, combination:pd.DataFrame=None, participant_pre_processing_path = None, participant_replay_path = None, participant_analysis_path=None) -> None:
         self.label = label
         self.combination = combination
@@ -1302,7 +1800,8 @@ class Trial:
         self.path = os.path.join(self.participant_path, self.label)
         self.pre_processing_path = os.path.join(participant_pre_processing_path, self.label)
         self.replay_path = os.path.join(participant_replay_path, self.label)
-        self.analysis_path = os.path.join(participant_analysis_path, self.label)
+        # self.analysis_path = os.path.join(participant_analysis_path, self.label)
+        self.analysis_path = participant_analysis_path
         self.duration = None
         self.meta_data = None
         
@@ -1312,6 +1811,9 @@ class Trial:
         self.grip_ind = 3
         self.movement_type_ind = 4
         self.combination_header = ["Trial Number", "Objects", "Hands", "Grips", "Movement Types"]
+        
+        self.save_overlayed_video = False
+        self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
     
     def set_instructions(self, instructions):
         #transform the instructions dataframe into a dictionary
@@ -1374,7 +1876,9 @@ class Trial:
             return replayed
         replayed = True
         files_suffixes = ['hand_traj.csv', 
-                          'main.csv']
+                          'main.csv', 
+                          'replay_data.pkl',
+                          'monitoring.csv',]
         for suffix in files_suffixes:
             if device_ID is not None:
                 file_count = len([f for f in os.listdir(self.replay_path) if f.endswith(suffix) and device_ID in f])
@@ -1415,10 +1919,10 @@ class Trial:
         analysed = True
         file_suffix = 'target_data.csv'
         if device_ID is not None:
-            file_count = len([f for f in os.listdir(self.analysis_path) if f.endswith(file_suffix) and device_ID in f])
+            file_count = len([f for f in os.listdir(self.analysis_path) if f.endswith(file_suffix) and device_ID in f and self.label in f])
             nmin = 1
         else:
-            file_count = len([f for f in os.listdir(self.analysis_path) if f.endswith(file_suffix)])
+            file_count = len([f for f in os.listdir(self.analysis_path) if f.endswith(file_suffix) and self.label in f])
             nmin = 2
         if file_count <nmin:
             analysed = False
@@ -1462,8 +1966,15 @@ class Trial:
         
         #get the current pandas timestamp
         now = pd.Timestamp.now()
+        
+        #get task hand and object from the combination dataframe
+        task_object = self.combination[self.combination_header[self.obj_ind]]
+        task_hand = self.combination[self.combination_header[self.hand_ind]]
+        
         #replay the experiment trial, and extract hands_data and objects_data
-        self.hands_data, self.objects_data = experiment_replayer.replay(replay)
+        self.hands_data, self.objects_data, self.replay_monitoring, self.saved_imgs, self.replay_data_dict = experiment_replayer.replay(replay, task_hand, task_object)
+        
+        
         # compute the duration of replaying the trial
         replay_duration = (pd.Timestamp.now() - now).total_seconds()
         
@@ -1477,6 +1988,7 @@ class Trial:
         timestamps_only = pd.read_pickle(os.path.join(self.pre_processing_path, f"{self.label}_cam_{device_id}_timestamps_{sequence}.gzip"), compression='gzip')
         self.main_data = timestamps_only
         
+        # merge the hands_data into the main_data
         hand_keys = sc.GraspingHand.MAIN_DATA_KEYS
         for hand_id, hand_data in self.hands_data.items():
             hand_summary = pd.DataFrame()
@@ -1487,24 +1999,1429 @@ class Trial:
             # add the hand_summary to the main_data starting at the row corresponding to the first timestamp
             self.main_data = pd.merge(self.main_data, hand_summary, on='Timestamps', how='left')
         
+        
+        # merge the objects_data into the main_data
         object_keys = sc.RigidObject.MAIN_DATA_KEYS
-        for object_id, object_data in self.objects_data.items():
-            
+        for object_id, object_data in self.objects_data.items():            
             object_summary = pd.DataFrame()
             object_summary['Timestamps'] = object_data['Timestamps']
             for key in object_keys:
                 if key != 'Timestamps':
                     object_summary[object_id + '_' + key] = object_data[key]
-            # print(f'object_summary: \n{object_summary}')
-            # print(f'object_keys: \n{object_keys}')
             
             # add the object_summary to the main_data starting at the row corresponding to the first timestamp
             self.main_data = pd.merge(self.main_data, object_summary, on='Timestamps', how='left')
         
+        # save the replay data to csv files
         self.save_replay_data(device_id)
+        
         return self.meta_data
 
-    def analyse(self, experiment_analyser):
+    def analyse(self, experiment_analyser, evaluate=False):
+        
+        if not self.was_replayed():
+            print(f'Trial {self.label} not replayed. This trial cannot be analysed and will be skipped.')
+            return
+        
+        # print(f"Analysing trial {self.label}")
+        # if not os.path.exists(self.analysis_path):
+        #     os.mkdir(self.analysis_path)
+            
+        device_id = experiment_analyser.get_device_id()
+        
+        
+        #get task hand and object from the combination dataframe
+        task_object = self.combination[self.combination_header[self.obj_ind]]
+        task_hand = self.combination[self.combination_header[self.hand_ind]]
+        task_grip = self.combination[self.combination_header[self.grip_ind]]
+        
+        replay_data_file = [f for f in os.listdir(self.replay_path) if f.endswith('replay_data.pkl') and device_id in f][0]
+        video_name = [f for f in os.listdir(self.replay_path) if device_id in f and f.endswith("overlayed_video.avi") ][0]
+        monitoring_file = [f for f in os.listdir(self.replay_path) if f.endswith('monitoring.csv') and device_id in f][0]
+        video_path = os.path.join(self.replay_path, video_name)
+        # print(f'video_path: {video_path}')
+
+        with open(os.path.join(self.replay_path, replay_data_file), 'rb') as f:
+            replay_data = pickle.load(f)
+            
+        print(f"replay_data: {replay_data}")
+        if 'timestamps' in replay_data.keys():
+            replay_timestamps = replay_data['timestamps']
+        elif 'timestamp' in replay_data.keys():
+            replay_timestamps = replay_data['timestamp']
+            
+        replay_hands = replay_data['hands']
+        replay_objects = replay_data['objects']
+        save_scene_path = os.path.join(self.analysis_path, f"{self.label}_cam_{device_id}_scene")
+        target_data = experiment_analyser.analyse(task_hand, task_object, task_grip, replay_timestamps, replay_hands, replay_objects, video_path, save_scene_path=save_scene_path)
+        
+        monitoring_data = pd.read_csv(os.path.join(self.replay_path, monitoring_file))
+        # drop the 'timestamp' column if it exists
+        if 'timestamp' in target_data.columns:
+            target_data.drop(columns=['timestamp'], inplace=True)
+        # target_data.drop(columns=['timestamp'], inplace=True)
+        # concatenate the monitoring data to the target data
+        target_data = pd.concat([monitoring_data, target_data], axis=1)
+
+        print(f"target_data: {target_data}")
+        
+        target_data.to_csv(os.path.join(self.analysis_path, f"{self.label}_cam_{device_id}_target_data.csv"), index=False)
+        if evaluate:
+            evaluation = self.evaluate(target_data, device_id)
+        else:
+            evaluation = None
+        return evaluation
+        
+    def evaluate(self, target_data= None, device_ID = None):
+        if target_data is None and device_ID is None:
+            return None
+        
+        if target_data is None:
+            if os.path.exists(os.path.join(self.analysis_path, f"{self.label}_cam_{device_ID}_target_data.csv")):
+                target_data = pd.read_csv(os.path.join(self.analysis_path, f"{self.label}_cam_{device_ID}_target_data.csv"))
+            else:
+                return None
+        task_hand = self.combination[self.combination_header[self.hand_ind]]
+        task_object = self.combination[self.combination_header[self.obj_ind]]
+        task_grip = self.combination[self.combination_header[self.grip_ind]]
+        mode = self.combination[self.combination_header[self.movement_type_ind]]
+        return Trial.evaluate_target_data(target_data, device_ID=device_ID, hand=task_hand, target=task_object, mode=mode, grip= task_grip)  
+
+    def evaluate_target_data_26_04(target_data, device_ID = None, hand = None, target = None):     # 26_04         
+        
+        print(f"evaluate target_data: {target_data}")
+        # print df columns headers
+        print(f"columns: {target_data.columns}")
+        ## TRIAL METADATA
+        trial_duration = target_data['timestamp'].iloc[-1] - target_data['timestamp'].iloc[0]
+        trial_nb_frames = len(target_data)
+        if device_ID is not None:
+            if device_ID == '1944301011EA1F1300':
+                cam_position = 'right'
+            elif device_ID == '19443010910F481300':
+                cam_position = 'left'
+        if hand is not None:
+            if hand == cam_position:
+                cam_hand_position = 'same'
+            else:
+                cam_hand_position = 'opposite'                
+                
+        
+        ## HAND DETECTION
+        
+        #find the first True value in the 'task_hand_found' column
+        idx_first_hand_found = target_data['task_hand_found'].idxmax()
+        first_hand_found_timestamp = target_data.loc[idx_first_hand_found, 'timestamp']
+        nb_hand_found = target_data['task_hand_found'].sum()
+        ratio_hand_found = nb_hand_found / trial_nb_frames
+        
+        #check if the hand was continuously estimated
+        is_hand_estimation_continuous = target_data.loc[idx_first_hand_found:,'task_hand_found'].all()
+        
+        ## OBJECT DETECTION
+        
+        #find the first True value in the 'task_object_found' column
+        first_object_found = target_data['task_object_found'].idxmax()
+        first_object_found_timestamp = target_data.loc[first_object_found, 'timestamp']
+        nb_object_found = target_data['task_object_found'].sum()
+        ratio_object_found = target_data['task_object_found'].sum() / trial_nb_frames
+        
+        #check the column 'task_object_estimation_continuous' to see if the object was continuously estimated
+        is_object_estimation_continuous = target_data.loc[first_object_found:,'task_object_found'].all()
+        
+        ## TRIAL VALIDATION
+        
+        achievable_index = max(idx_first_hand_found, first_object_found)
+        achievable_timestamp = target_data.loc[achievable_index, 'timestamp']
+        achievable_time = trial_duration - achievable_timestamp 
+        nb_achievable_task_detections = trial_nb_frames - achievable_index
+        ratio_achievable_task_detections = nb_achievable_task_detections / trial_nb_frames
+
+        # check hand detection
+        max_nb_consecutive_failed_hand_detections = 3
+        too_many_consecutive_failed_hand_detections = False
+        nb_consecutive_failed_hand_detections =0
+        for index, row in target_data.iterrows():
+            if row['task_hand_found'] == True :
+                nb_consecutive_failed_hand_detections = 0
+            else:
+                nb_consecutive_failed_hand_detections += 1
+            if nb_consecutive_failed_hand_detections > max_nb_consecutive_failed_hand_detections:
+                too_many_consecutive_failed_hand_detections = True
+                break
+        
+        # check object detection
+        max_nb_consecutive_failed_object_detections = 3
+        too_many_consecutive_failed_object_detections = False
+        nb_consecutive_failed_object_detections = 0
+        for index, row in target_data.iterrows():
+            if row['task_object_found'] == True :
+                nb_consecutive_failed_object_detections = 0
+            else:
+                nb_consecutive_failed_object_detections += 1
+            if nb_consecutive_failed_object_detections > max_nb_consecutive_failed_object_detections:
+                too_many_consecutive_failed_object_detections = True
+                break
+        
+        # define the minimum ratio of hand and object found to consider the trial valid
+        min_ratio_hand_found = 0.5
+        min_ratio_object_found = 0.5
+        min_ratio_achievable_task_detections = 0.4
+        min_achievable_time = 0.5
+        
+        hand_found_ok = ratio_hand_found > min_ratio_hand_found
+        object_found_ok = ratio_object_found > min_ratio_object_found
+        achievable_task_detections_ok = ratio_achievable_task_detections > min_ratio_achievable_task_detections
+        achievable_time_ok = achievable_time > min_achievable_time
+        
+        # is_trial_valid =  hand_found_ok and object_found_ok and achievable_task_detections_ok and achievable_time_ok and not too_many_consecutive_failed_hand_detections and not too_many_consecutive_failed_object_detections
+        is_trial_valid = achievable_time_ok and not too_many_consecutive_failed_hand_detections and not too_many_consecutive_failed_object_detections
+        not_valid_reasons = []
+        if not is_trial_valid:
+            if ratio_hand_found <= 0.7:
+                not_valid_reasons.append('hand not found enough')
+            if ratio_object_found <= 0.9:
+                not_valid_reasons.append('object not found enough')
+            if too_many_consecutive_failed_hand_detections:
+                not_valid_reasons.append('too many consecutive failed hand detections')
+            if too_many_consecutive_failed_object_detections:
+                not_valid_reasons.append('too many consecutive failed object detections') 
+        
+        # create a new column 'task_estimation_achievable' with False before achievable_index and True after
+        target_data['task_estimation_achievable'] = False
+        target_data.loc[achievable_index:, 'task_estimation_achievable'] = True
+              
+        ## TARGET IDENTIFICATION
+        
+        #find the first True value in the 'task_object_found' column
+        idx_first_target_found = target_data['task_target_found'].idxmax() 
+        first_target_found_timestamp = target_data.loc[idx_first_target_found, 'timestamp']- achievable_timestamp
+        
+        #count the number of True values in the 'task_object_found' column
+        nb_target_found = target_data['task_target_found'].sum()
+        
+        # compute the ratio of target found
+        target_found_ratio = nb_target_found / nb_achievable_task_detections
+        
+        # count the number of False values in the 'task_object_found' column after the first True value
+        after_first_found = target_data.loc[idx_first_target_found:, 'task_target_found']
+        ratio_target_switch = (len(after_first_found) - after_first_found.sum())/len(after_first_found)
+        task_target_idenfication_successful = ratio_target_switch < 0.3
+        
+         
+        # for each metric, check if colmns target_from_impacts	target_from_distance, target_from_distance_derivative and target_from_direction are have same value as target
+        
+        metrics = ['impacts', 'distance', 'distance_derivative', 'direction']
+        for metric in metrics:
+            # test if 'target_from_{metric}' exists in the columns
+            if f'target_from_{metric}' not in target_data.columns:
+                target_data[f'target_from_{metric}_correct'] = False
+            else:
+                target_data[f'target_from_{metric}_correct'] = target_data[f'target_from_{metric}'].eq(target)
+        
+        nb_metric_correct = {}
+        for metric in metrics:
+            nb_metric_correct[metric] = target_data[f'target_from_{metric}_correct'].sum()
+        
+        most_trustworthy_metric = max(nb_metric_correct, key=nb_metric_correct.get)
+        
+        # create a new column 'task_target_not_found_but_individual_metrics_correct' with True if the target was not found but at least one of the individual metrics is correct
+        target_data['task_target_not_found_but_individual_metrics_correct'] = False
+        target_data['task_target_not_found_but_metrics_correct'] = ''
+        for index, row in target_data.iterrows():
+            if row['task_target_found'] == False:
+                correct_metrics = []
+                for metric in metrics:
+                    if row[f'target_from_{metric}_correct']:
+                        correct_metrics.append(metric)
+                        target_data.loc[index, 'task_target_not_found_but_individual_metrics_correct'] = True
+                target_data.loc[index, 'task_target_not_found_but_metrics_correct'] = ', '.join(correct_metrics)
+                        
+        # count the number of True values in the 'task_target_not_found_but_individual_metrics_correct' column
+        nb_target_not_found_but_individual_metrics_correct = target_data['task_target_not_found_but_individual_metrics_correct'].sum()
+        
+        # compute the ratio of target not found but individual metrics correct
+        ratio_target_not_found_but_individual_metrics_correct = nb_target_not_found_but_individual_metrics_correct / nb_achievable_task_detections
+        # count the number of True values in the 'task
+        
+        ## GRIP IDENTIFICATION
+        
+        #find the first True value in the 'task_grip_found' column
+        first_grip_found = target_data['task_grip_found'].idxmax() 
+        first_grip_found_timestamp = target_data.loc[first_grip_found, 'timestamp']-achievable_timestamp
+        
+        #count the number of True values in the 'task_grip_found' column
+        nb_grips_found = target_data['task_grip_found'].sum()
+        
+        #compute the ratio of grip found
+        grip_found_ratio = nb_grips_found / nb_achievable_task_detections
+        
+        # count the number of False values in the 'task_grip_found' column after the first True value
+        after_first_found = target_data.loc[first_grip_found:, 'task_grip_found']   
+        ratio_grip_switch = (len(after_first_found) - after_first_found.sum())/len(after_first_found)
+        task_grip_idenfication_successful = ratio_grip_switch < 0.3
+        
+        ## TIME TO TARGET ESTIMATION
+        # add a new column 'time_to_target' with the time to target, compute the difference between the timestamp and the timestamp of the last row
+        target_data['time_to_target'] = target_data['timestamp'] - target_data['timestamp'].iloc[-1]
+        
+        # add a new column 'time_to_target_error' with the difference between the time to target estimation and the actual time to target
+        target_data['time_to_target_error'] = target_data['time_to_target'] - target_data['estimated_target_time_to_impact']
+        
+        # compute the rmse of the time to target estimation
+        time_to_target_rmse = np.sqrt(np.mean(target_data['time_to_target_error']**2))
+        
+        evaluation_data = {'cam_hand_position': cam_hand_position,
+                           'trial_nb_frames': trial_nb_frames,
+                           'trial_nb_achievable_task_detections': nb_achievable_task_detections,
+                           
+                           'idx_first_hand_found': idx_first_hand_found,
+                           'nb_hand_found': nb_hand_found,
+                           'ratio_hand_found': ratio_hand_found,
+                           'is_hand_estimation_continuous': is_hand_estimation_continuous,
+                           
+                           'idx_first_object_found': first_object_found,
+                           'nb_object_found': nb_object_found,
+                           'ratio_object_found': ratio_object_found,
+                           'is_object_estimation_continuous': is_object_estimation_continuous,
+                           
+                           'trial_duration': trial_duration,
+                           'first_hand_found': first_hand_found_timestamp,
+                           'first_object_found': first_object_found_timestamp,                           
+                           'first_target_found': first_target_found_timestamp, 
+                           'first_grip_found': first_grip_found_timestamp, 
+                           
+                           'is_trial_valid' : is_trial_valid, 
+                           'not_valid_reasons': not_valid_reasons,
+                           
+                           'nb_target_found': nb_target_found, 
+                            'nb_impacts_correct': nb_metric_correct['impacts'],
+                            'nb_distance_correct': nb_metric_correct['distance'],
+                            'nb_distance_derivative_correct': nb_metric_correct['distance_derivative'],
+                            'nb_direction_correct': nb_metric_correct['direction'],
+                            'most_trustworthy_metric': most_trustworthy_metric,
+                            'ratio_target_not_found_but_individual_metrics_correct': ratio_target_not_found_but_individual_metrics_correct,
+                            'nb_target_not_found_but_individual_metrics_correct': nb_target_not_found_but_individual_metrics_correct,
+                            
+                           'target_found_ratio': target_found_ratio, 
+                           'ratio_target_switch': ratio_target_switch, 
+                           'task_target_idenfication_successful': task_target_idenfication_successful,
+                           
+                           'nb_grips_found': nb_grips_found,
+                           'grip_found_ratio': grip_found_ratio,
+                           'ratio_grip_switch': ratio_grip_switch,
+                           'task_grip_idenfication_successful': task_grip_idenfication_successful,
+                           'time_to_target_rmse': time_to_target_rmse}
+        
+        return evaluation_data
+    
+    def evaluate_target_data(target_data, device_ID = None, hand = None, target = None, mode = None, grip= None):     # 16_05_save
+        
+        print(f"evaluate target_data: {target_data}")
+        ## TRIAL METADATA
+        trial_duration = target_data['timestamp'].iloc[-1] - target_data['timestamp'].iloc[0]
+        trial_nb_frames = len(target_data)
+        if device_ID is not None:
+            if device_ID == '1944301011EA1F1300':
+                cam_position = 'right'
+            elif device_ID == '19443010910F481300':
+                cam_position = 'left'
+        if hand is not None:
+            if hand == cam_position:
+                cam_hand_position = 'same'
+            else:
+                cam_hand_position = 'opposite'                
+                
+        
+        ## HAND DETECTION
+        nb_hand_found = target_data['task_hand_found'].sum()
+        ratio_hand_found = nb_hand_found / trial_nb_frames
+        
+        #find the first True value in the 'task_hand_found' column
+        # idx_first_hand_found = target_data['task_hand_found'].idxmax()
+        # first_hand_found_timestamp = target_data.loc[idx_first_hand_found, 'timestamp']
+        
+        # find the index at wich the hand was detected consecutively for min_number_consecutive_hand_detections frames
+        min_number_consecutive_hand_detections = 3
+        nb_consecutive_hand_detections = 0
+        idx_first_consecutive_hand_found = trial_nb_frames-1
+        for index, row in target_data.iterrows():
+            if row['task_hand_found'] == True:
+                nb_consecutive_hand_detections += 1
+            else:
+                nb_consecutive_hand_detections = 0
+            if nb_consecutive_hand_detections == min_number_consecutive_hand_detections:
+                idx_first_consecutive_hand_found = index-min_number_consecutive_hand_detections+1
+                break        
+        
+        first_consecutive_hand_found_timestamp = target_data.loc[idx_first_consecutive_hand_found, 'timestamp']
+        
+        #check if the hand was continuously estimated
+        is_hand_estimation_continuous = target_data.loc[idx_first_consecutive_hand_found:,'task_hand_found'].all()
+        
+        ## OBJECT DETECTION
+        
+        nb_object_found = target_data['task_object_found'].sum()
+        ratio_object_found = target_data['task_object_found'].sum() / trial_nb_frames
+        
+        #find the first True value in the 'task_object_found' column
+        # idx_first_object_found = target_data['task_object_found'].idxmax()
+        # first_object_found_timestamp = target_data.loc[idx_first_object_found, 'timestamp']
+        
+        # find the index at wich the object was detected consecutively for min_number_consecutive_object_detections frames
+        idx_first_consecutive_object_found = trial_nb_frames-1
+        min_number_consecutive_object_detections = 3
+        nb_consecutive_object_detections = 0
+        for index, row in target_data.iterrows():
+            if row['task_object_found'] == True:
+                nb_consecutive_object_detections += 1
+            else:
+                nb_consecutive_object_detections = 0
+            if nb_consecutive_object_detections == min_number_consecutive_object_detections:
+                idx_first_consecutive_object_found = index-min_number_consecutive_object_detections+1
+                break
+        first_consecutive_object_found_timestamp = target_data.loc[idx_first_consecutive_object_found, 'timestamp']
+        
+        #check the column 'task_object_estimation_continuous' to see if the object was continuously estimated
+        is_object_estimation_continuous = target_data.loc[idx_first_consecutive_object_found:,'task_object_found'].all()
+        
+        ## TRIAL VALIDATION
+        
+        # achievable_index = max(idx_first_hand_found, idx_first_object_found)
+        achievable_index = max(idx_first_consecutive_hand_found, idx_first_consecutive_object_found)
+        if achievable_index == trial_nb_frames-1:
+            return None
+        achievable_timestamp = target_data.loc[achievable_index, 'timestamp']
+        achievable_time = trial_duration - achievable_timestamp 
+        nb_achievable_task_detections = trial_nb_frames - achievable_index
+        ratio_achievable_task_detections = nb_achievable_task_detections / trial_nb_frames
+
+        # check hand detection after achievable_index
+        max_nb_consecutive_failed_hand_detections = 3
+        too_many_consecutive_failed_hand_detections = False
+        nb_consecutive_failed_hand_detections =0
+        for index in range(achievable_index, trial_nb_frames):
+            row = target_data.iloc[index]
+            if row['task_hand_found'] == True :
+                nb_consecutive_failed_hand_detections = 0
+            else:
+                nb_consecutive_failed_hand_detections += 1
+            if nb_consecutive_failed_hand_detections > max_nb_consecutive_failed_hand_detections:
+                too_many_consecutive_failed_hand_detections = True
+                break
+        
+        # check object detection after achievable_index
+        max_nb_consecutive_failed_object_detections = 3
+        too_many_consecutive_failed_object_detections = False
+        nb_consecutive_failed_object_detections = 0
+        for index in range(achievable_index, trial_nb_frames):
+            row = target_data.iloc[index]
+            if row['task_object_found'] == True :
+                nb_consecutive_failed_object_detections = 0
+            else:
+                nb_consecutive_failed_object_detections += 1
+            if nb_consecutive_failed_object_detections > max_nb_consecutive_failed_object_detections:
+                too_many_consecutive_failed_object_detections = True
+                break
+        
+        # define the minimum ratio of hand and object found to consider the trial valid
+        min_ratio_hand_found = 0.5
+        min_ratio_object_found = 0.5
+        min_ratio_achievable_task_detections = 0.4
+        min_achievable_time = 0.5
+        
+        hand_found_ok = ratio_hand_found > min_ratio_hand_found
+        object_found_ok = ratio_object_found > min_ratio_object_found
+        achievable_task_detections_ok = ratio_achievable_task_detections > min_ratio_achievable_task_detections
+        achievable_time_absolute_ok = achievable_time > min_achievable_time
+        achievable_time_relative_ok = achievable_time > 0.5 * trial_duration
+        
+        # is_trial_valid =  hand_found_ok and object_found_ok and achievable_task_detections_ok and achievable_time_ok and not too_many_consecutive_failed_hand_detections and not too_many_consecutive_failed_object_detections
+        is_trial_valid = (achievable_time_absolute_ok or achievable_time_relative_ok) and not too_many_consecutive_failed_hand_detections and not too_many_consecutive_failed_object_detections
+        # is_trial_valid = ratio_hand_found > 0.7 and ratio_object_found > 0.9 and not too_many_consecutive_failed_hand_detections and not too_many_consecutive_failed_object_detections
+
+        not_valid_reasons = []
+        valid_reasons = []
+        
+        # if not hand_found_ok:
+        #     not_valid_reasons.append('hand not found enough')
+        # else:
+        #     valid_reasons.append('hand found enough')
+            
+        # if not object_found_ok:
+        #     not_valid_reasons.append('object not found enough')
+        # else:
+        #     valid_reasons.append('object found enough')
+        
+        if not achievable_time_absolute_ok:
+            not_valid_reasons.append('achievable absolute time not enough')
+        else:
+            valid_reasons.append('achievable absolute time enough')
+        
+        if not achievable_time_relative_ok:
+            not_valid_reasons.append('achievable relative time not enough')
+        else:
+            valid_reasons.append('achievable relative time enough')
+        
+        # if not achievable_task_detections_ok:
+        #     not_valid_reasons.append('not enough achievable task detections')
+        # else:
+        #     valid_reasons.append('enough achievable task detections')
+        
+        if too_many_consecutive_failed_hand_detections:
+            not_valid_reasons.append('too many consecutive failed hand detections')
+        else:
+            valid_reasons.append('not too many consecutive failed hand detections')
+            
+        if too_many_consecutive_failed_object_detections:
+            not_valid_reasons.append('too many consecutive failed object detections')
+        else:
+            valid_reasons.append('not too many consecutive failed object detections')
+        
+        
+        # create a new column 'task_estimation_achievable' with False before achievable_index and True after
+        target_data['task_estimation_achievable'] = False
+        target_data.loc[achievable_index:, 'task_estimation_achievable'] = True
+              
+        ## TARGET IDENTIFICATION
+        target_found_label = 'task_target_found'
+        target_data[f'target_from_max_metric_correct'] = target_data['target_max_metric_confidence'].eq(target)
+        # target_found_label = 'target_from_max_metric_correct'
+        
+        #find the starting index of the longest series of consecutive True values in the 'task_target_found' column
+        idx_start_longest_consecutive_target_found = 0
+        longest_series_length = 0
+        idx_start_series = 0
+        series_length = 0
+        previous_target_found = False
+        for index, row in target_data.iterrows():
+            current_target_found = row[target_found_label]
+            if current_target_found == True:
+                
+                if previous_target_found == False:
+                    idx_start_series = index
+                series_length += 1
+                
+                if series_length > longest_series_length:
+                    longest_series_length = series_length
+                    idx_start_longest_consecutive_target_found = idx_start_series
+                previous_target_found = True
+            else:
+                series_length = 0
+                previous_target_found = False
+                
+            
+        
+        #find the first True value in the 'task_object_found' column
+        idx_first_target_found = target_data[target_found_label].idxmax() 
+        idx_first_target_found = idx_start_longest_consecutive_target_found
+        
+        first_target_found_timestamp = target_data.loc[idx_first_target_found, 'timestamp']
+        
+        #count the number of True values in the 'task_object_found' column
+        nb_target_found = target_data[target_found_label].sum()
+        
+        # compute the ratio of target found
+        target_found_ratio = nb_target_found / nb_achievable_task_detections
+        
+        # count the number of False values in the 'task_object_found' column after the first True value
+        target_data_after_first_target_found = target_data.loc[idx_first_target_found:, target_found_label]
+        ratio_target_switch = (len(target_data_after_first_target_found) - target_data_after_first_target_found.sum())/len(target_data_after_first_target_found)
+        task_target_idenfication_successful = ratio_target_switch < 0.3
+        
+        
+        
+        
+        # for each metric, check if colmns target_from_impacts	target_from_distance, target_from_distance_derivative and target_from_direction are have same value as target
+        
+        metrics = ['impacts', 'distance', 'distance_derivative', 'direction']
+        metrics = ['impacts', 'distance', 'future_distance', 'distance_derivative', 'direction']
+        for metric in metrics:
+            target_data[f'target_from_{metric}_correct'] = target_data[f'target_from_{metric}'].eq(target)
+        
+        nb_metric_correct = {}
+        nb_correct_when_most_probable_wrong = {}
+        nb_correct_when_most_probable_wrong_beginning = {}
+        nb_correct_when_most_probable_wrong_end = {}
+        for metric in metrics:
+            nb_metric_correct[metric] = target_data[f'target_from_{metric}_correct'].sum()
+            target_data[f'target_from_{metric}_correct_when_most_probable_wrong'] = False
+        most_trustworthy_metric = max(nb_metric_correct, key=nb_metric_correct.get)
+        nb_metric_correct['max_metric'] = target_data[f'target_from_max_metric_correct'].sum()
+        
+        # create a new column 'task_target_not_found_but_individual_metrics_correct' with True if the target was not found but at least one of the individual metrics is correct
+        target_data['task_target_not_found_but_individual_metrics_correct'] = False
+        target_data['task_target_not_found_but_metrics_correct'] = ''
+        for index, row in target_data.iterrows():
+            if row[target_found_label] == False:
+                correct_metrics = []
+                for metric in metrics:
+                    if row[f'target_from_{metric}_correct']:
+                        correct_metrics.append(metric)
+                        target_data.loc[index, 'task_target_not_found_but_individual_metrics_correct'] = True
+                        target_data.loc[index, f'target_from_{metric}_correct_when_most_probable_wrong'] = True
+                target_data.loc[index, 'task_target_not_found_but_metrics_correct'] = ', '.join(correct_metrics)
+                
+        for metric in metrics:
+            nb_correct_when_most_probable_wrong[metric] = target_data[f'target_from_{metric}_correct_when_most_probable_wrong'].sum()
+            nb_correct_when_most_probable_wrong_beginning[metric] = target_data.loc[target_data['movement_part'].eq('begin'), f'target_from_{metric}_correct_when_most_probable_wrong'].sum()
+            nb_correct_when_most_probable_wrong_end[metric] = target_data.loc[target_data['movement_part'].eq('end'), f'target_from_{metric}_correct_when_most_probable_wrong'].sum()
+                        
+        # count the number of True values in the 'task_target_not_found_but_individual_metrics_correct' column
+        nb_target_not_found_but_individual_metrics_correct = target_data['task_target_not_found_but_individual_metrics_correct'].sum()
+        
+        # compute the ratio of target not found but individual metrics correct
+        ratio_target_not_found_but_individual_metrics_correct = nb_target_not_found_but_individual_metrics_correct / nb_achievable_task_detections
+        
+        
+        #find the starting index of the longest series of consecutive True values in the 'task_target_found' column
+        task_target_idenfication_successful_met={}
+        first_target_found_timestamp_met = {}
+        idx_first_target_found_met = {}
+        
+        metrics = ['impacts', 'distance', 'future_distance', 'distance_derivative', 'max_metric']
+        for metric in metrics:
+            target_found_label = f'target_from_{metric}_correct'
+            idx_start_longest_consecutive_target_found_met = 0
+            longest_series_length = 0
+            idx_start_series = 0
+            series_length = 0
+            previous_target_found = False
+            for index, row in target_data.iterrows():
+                current_target_found = row[target_found_label]
+                if current_target_found == True:
+                    
+                    if previous_target_found == False:
+                        idx_start_series = index
+                    series_length += 1
+                    
+                    if series_length > longest_series_length:
+                        longest_series_length = series_length
+                        idx_start_longest_consecutive_target_found_met = idx_start_series
+                    previous_target_found = True
+                else:
+                    series_length = 0
+                    previous_target_found = False
+                    
+                
+            
+            #find the first True value in the 'task_object_found' column
+            # idx_first_target_found_met = target_data[target_found_label].idxmax() 
+            idx_first_target_found_met[metric] = idx_start_longest_consecutive_target_found_met
+            
+            first_target_found_timestamp_met[metric] = target_data.loc[idx_first_target_found_met[metric], 'timestamp']
+            
+            #count the number of True values in the 'task_object_found' column
+            nb_target_found_met = target_data[target_found_label].sum()
+            
+            # compute the ratio of target found
+            target_found_ratio_met = nb_target_found_met / nb_achievable_task_detections
+            
+            # count the number of False values in the 'task_object_found' column after the first True value
+            target_data_after_first_target_found_met = target_data.loc[idx_first_target_found_met[metric]:, target_found_label]
+            ratio_target_switch_met = (len(target_data_after_first_target_found_met) - target_data_after_first_target_found_met.sum())/len(target_data_after_first_target_found_met)
+            task_target_idenfication_successful_met[metric] = ratio_target_switch_met < 0.3
+        
+        ## GRIP IDENTIFICATION
+        
+        #find the starting index of the longest series of consecutive True values in the 'task_grip_found' column
+        idx_start_longest_consecutive_grip_found = 0
+        longest_series_length = 0
+        idx_start_series = 0
+        series_length = 0
+        previous_grip_found = False
+        for index, row in target_data.iterrows():
+            current_grip_found = row['task_grip_found']
+            if current_grip_found == True:
+                
+                if previous_grip_found == False:
+                    idx_start_series = index
+                series_length += 1
+                
+                if series_length > longest_series_length:
+                    longest_series_length = series_length
+                    idx_start_longest_consecutive_grip_found = idx_start_series
+                previous_grip_found = True
+            else:
+                series_length = 0
+                previous_grip_found = False
+        
+        #find the first True value in the 'task_grip_found' column
+        first_grip_found_idx = target_data['task_grip_found'].idxmax() 
+        first_grip_found_idx = idx_start_longest_consecutive_grip_found
+        first_grip_found_timestamp = target_data.loc[first_grip_found_idx, 'timestamp']
+        
+        #count the number of True values in the 'task_grip_found' column
+        nb_grips_found = target_data['task_grip_found'].sum()
+        
+        #compute the ratio of grip found
+        grip_found_ratio = nb_grips_found / nb_achievable_task_detections
+        
+        # count the number of False values in the 'task_grip_found' column after the first True value
+        after_first_grip_found = target_data.loc[first_grip_found_idx:, 'task_grip_found']   
+        ratio_grip_switch = (len(after_first_grip_found) - after_first_grip_found.sum())/len(after_first_grip_found)
+        task_grip_idenfication_successful = ratio_grip_switch < 0.3
+        
+        
+        # first_grip_found_timestamp_met = {}
+        # nb_grips_found_met = {}
+        # grip_found_ratio_met = {}
+        # task_grip_idenfication_successful_met = {}
+        # for metric in metrics:
+        #     grip_label = f'task_grip_found_{metric}'
+        #     idx_start_longest_consecutive_grip_found = 0
+        #     longest_series_length = 0
+        #     idx_start_series = 0
+        #     series_length = 0
+        #     previous_grip_found = False
+        #     for index, row in target_data.iterrows():
+        #         current_grip_found = row[grip_label]
+        #         if current_grip_found == True:
+                    
+        #             if previous_grip_found == False:
+        #                 idx_start_series = index
+        #             series_length += 1
+                    
+        #             if series_length > longest_series_length:
+        #                 longest_series_length = series_length
+        #                 idx_start_longest_consecutive_grip_found = idx_start_series
+        #             previous_grip_found = True
+        #         else:
+        #             series_length = 0
+        #             previous_grip_found = False
+            
+        #     #find the first True value in the 'task_grip_found' column
+        #     first_grip_found_idx = target_data[grip_label].idxmax() 
+        #     first_grip_found_idx = idx_start_longest_consecutive_grip_found
+        #     first_grip_found_timestamp_met[metric] = target_data.loc[first_grip_found_idx, 'timestamp']
+            
+        #     #count the number of True values in the 'task_grip_found' column
+        #     nb_grips_found_met[metric] = target_data[grip_label].sum()
+            
+        #     #compute the ratio of grip found
+        #     grip_found_ratio_met[metric] = nb_grips_found_met[metric] / nb_achievable_task_detections
+            
+        #     # count the number of False values in the 'task_grip_found' column after the first True value
+        #     after_first_grip_found = target_data.loc[first_grip_found_idx:, grip_label]   
+        #     ratio_grip_switch_met = (len(after_first_grip_found) - after_first_grip_found.sum())/len(after_first_grip_found)
+        #     task_grip_idenfication_successful_met[metric] = ratio_grip_switch_met < 0.3
+        
+        
+        ## KINEMATIC DATA
+        # print(f"target_data: {target_data}")
+        # print(f"target_data.columns: {target_data.columns}")
+        # print(f'target_data["hand_scalar_velocity"]: {target_data["hand_scalar_velocity"]}')
+        # get maximum velocity value and index in 'hand_scalar_velocity' column
+        idx_max_velocity = target_data['hand_scalar_velocity'].idxmax()
+        max_velocity = target_data.loc[idx_max_velocity, 'hand_scalar_velocity']
+        
+        target_data_after_max_vel = target_data[idx_max_velocity:]
+        target_data_before_max_vel = target_data[:idx_max_velocity]
+        
+        # get the minimum value and index in 'hand_scalar_velocity' column after the maximum velocity
+        idx_min_velocity = target_data_after_max_vel['hand_scalar_velocity'].idxmin()
+        min_velocity = target_data_after_max_vel.loc[idx_min_velocity, 'hand_scalar_velocity']
+        
+        delta_velocity = max_velocity - min_velocity
+        min_vel_ratio = 0.1
+        velocity_threshold_end = min_velocity + min_vel_ratio * delta_velocity
+        velocity_threshold_beginning = min_vel_ratio * max_velocity
+        
+        #find the first index where the velocity is above the threshold
+        idx_begin_movement = target_data_before_max_vel['hand_scalar_velocity'].gt(velocity_threshold_beginning).idxmax()
+        begin_movement_timestamp = target_data.loc[idx_begin_movement, 'timestamp']
+        
+        
+        # find the first index where the velocity is below the threshold
+        idx_end_movement = target_data_after_max_vel['hand_scalar_velocity'].lt(velocity_threshold_end).idxmax()
+        end_movement_timestamp = target_data.loc[idx_end_movement, 'timestamp']
+        resting_time = trial_duration - end_movement_timestamp
+        delay_time = min(begin_movement_timestamp, achievable_timestamp)
+        
+        movement_duration = end_movement_timestamp - begin_movement_timestamp
+        target_found_margin = end_movement_timestamp - first_target_found_timestamp
+        grip_found_margin = end_movement_timestamp - first_grip_found_timestamp
+        target_found_delay = first_target_found_timestamp - delay_time
+        grip_found_delay = first_grip_found_timestamp - delay_time
+        
+        target_found_margin_met = {}
+        grip_found_margin_met = {}
+        target_found_delay_met = {}
+        grip_found_delay_met = {}
+        
+        for metric in metrics:
+            target_found_margin_met[metric] = end_movement_timestamp - first_target_found_timestamp_met[metric]
+            target_found_delay_met[metric] = first_target_found_timestamp_met[metric] - delay_time
+            # grip_found_margin_met[metric] = end_movement_timestamp - first_grip_found_timestamp_met[metric]
+            # grip_found_delay_met[metric] = first_grip_found_timestamp_met[metric] - delay_time
+            
+        
+        
+        
+        ## TIME TO TARGET ESTIMATION
+        
+        # get sub-df with only the rows from the first target found
+        target_data_after_first_target_found = target_data.loc[idx_first_target_found:]
+        idx_end_movement_after_target = idx_end_movement - idx_first_target_found
+        
+        na_values = [rt.NO_SIGN_SWITCH, rt.NO_POLY_FIT, rt.NO_REAL_POSITIVE_ROOT]
+        for index, row in target_data_after_first_target_found.iterrows():
+            if row['estimated_target_time_to_impact'] in na_values:
+                target_data_after_first_target_found.loc[index, 'estimated_target_time_to_impact'] = np.nan
+        
+        print(f"idx_end_movement_after_target: {idx_end_movement_after_target}")
+        print(f"len(target_data_after_first_target_found): {len(target_data_after_first_target_found)}")
+        # add a new column 'time_to_target' with the time to target, compute the difference between the timestamp and the timestamp of the last row
+        if idx_end_movement_after_target < 0:
+            target_data_after_first_target_found['time_to_target'] = np.nan
+        else:
+            target_data_after_first_target_found['time_to_target'] = target_data_after_first_target_found['timestamp'] - target_data_after_first_target_found['timestamp'].iloc[idx_end_movement_after_target]
+        
+        #check
+        
+        # add a new column 'time_to_target_error' with the difference between the time to target estimation and the actual time to target
+        target_data_after_first_target_found['time_to_target_error'] = target_data_after_first_target_found['time_to_target'] - target_data_after_first_target_found['estimated_target_time_to_impact']
+        
+        # compute the rmse of the time to target estimation
+        time_to_target_rmse = np.sqrt(np.mean(target_data_after_first_target_found['time_to_target_error']**2))
+        
+        evaluation_data = {'task_target': target,
+                           'task_grip': grip,   
+                            'cam_hand_position': cam_hand_position,
+                           'movement_mode': mode,
+                           'trial_nb_frames': trial_nb_frames,
+                           'trial_nb_achievable_task_detections': nb_achievable_task_detections,
+                           
+                           'idx_first_hand_found': idx_first_consecutive_hand_found,
+                           'nb_hand_found': nb_hand_found,
+                           'ratio_hand_found': ratio_hand_found,
+                           'is_hand_estimation_continuous': is_hand_estimation_continuous,
+                           
+                           'idx_first_object_found': idx_first_consecutive_object_found,
+                           'nb_object_found': nb_object_found,
+                           'ratio_object_found': ratio_object_found,
+                           'is_object_estimation_continuous': is_object_estimation_continuous,
+                           
+                           'first_hand_found': first_consecutive_hand_found_timestamp,
+                           'first_object_found': first_consecutive_object_found_timestamp,                           
+                           'first_target_found': first_target_found_timestamp, 
+                           
+                           
+                           'is_trial_valid' : is_trial_valid, 
+                           'not_valid_reasons': not_valid_reasons,
+                           'valid_reasons': valid_reasons,
+                           
+                           'nb_target_found': nb_target_found, 
+                            'nb_impacts_correct': nb_metric_correct['impacts'],
+                            'nb_distance_correct': nb_metric_correct['distance'],
+                            'nb_future_distance_correct': nb_metric_correct['future_distance'],
+                            'nb_distance_derivative_correct': nb_metric_correct['distance_derivative'],
+                            'nb_direction_correct': nb_metric_correct['direction'],
+                            'nb_max_metric_correct': nb_metric_correct['max_metric'],
+                            
+                            'nb_impacts_correct_when_most_probable_wrong': nb_correct_when_most_probable_wrong['impacts'],
+                            'nb_distance_correct_when_most_probable_wrong': nb_correct_when_most_probable_wrong['distance'],
+                            'nb_future_distance_correct_when_most_probable_wrong': nb_correct_when_most_probable_wrong['future_distance'],
+                            'nb_distance_derivative_correct_when_most_probable_wrong': nb_correct_when_most_probable_wrong['distance_derivative'],
+                            'nb_direction_correct_when_most_probable_wrong': nb_correct_when_most_probable_wrong['direction'],
+                            
+                            'nb_impacts_correct_when_most_probable_wrong_beginning': nb_correct_when_most_probable_wrong_beginning['impacts'],
+                            'nb_distance_correct_when_most_probable_wrong_beginning': nb_correct_when_most_probable_wrong_beginning['distance'],
+                            'nb_future_distance_correct_when_most_probable_wrong_beginning': nb_correct_when_most_probable_wrong_beginning['future_distance'],
+                            'nb_distance_derivative_correct_when_most_probable_wrong_beginning': nb_correct_when_most_probable_wrong_beginning['distance_derivative'],
+                            'nb_direction_correct_when_most_probable_wrong_beginning': nb_correct_when_most_probable_wrong_beginning['direction'],
+                            
+                            'nb_impacts_correct_when_most_probable_wrong_end': nb_correct_when_most_probable_wrong_end['impacts'],
+                            'nb_distance_correct_when_most_probable_wrong_end': nb_correct_when_most_probable_wrong_end['distance'],
+                            'nb_future_distance_correct_when_most_probable_wrong_end': nb_correct_when_most_probable_wrong_end['future_distance'],
+                            'nb_distance_derivative_correct_when_most_probable_wrong_end': nb_correct_when_most_probable_wrong_end['distance_derivative'],
+                            'nb_direction_correct_when_most_probable_wrong_end': nb_correct_when_most_probable_wrong_end['direction'],
+                            
+                            'most_trustworthy_metric': most_trustworthy_metric,
+                            'ratio_target_not_found_but_individual_metrics_correct': ratio_target_not_found_but_individual_metrics_correct,
+                            'nb_target_not_found_but_individual_metrics_correct': nb_target_not_found_but_individual_metrics_correct,
+                            
+                           'target_found_ratio': target_found_ratio, 
+                           'idx_first_target_found': idx_first_target_found,
+                           'idx_start_longest_consecutive_target_found': idx_start_longest_consecutive_target_found,
+                           'ratio_target_switch': ratio_target_switch, 
+                           
+                           'task_target_idenfication_successful': task_target_idenfication_successful,
+                           'task_target_idenfication_successful_distance': task_target_idenfication_successful_met['distance'],
+                            'task_target_idenfication_successful_distance_derivative': task_target_idenfication_successful_met['distance_derivative'],
+                            'task_target_idenfication_successful_impacts': task_target_idenfication_successful_met['impacts'],
+                            'task_target_idenfication_successful_future_distance': task_target_idenfication_successful_met['future_distance'],
+                            'task_target_idenfication_successful_max_metric': task_target_idenfication_successful_met['max_metric'],
+                           
+                            
+                           
+                           'nb_grips_found': nb_grips_found,
+                           'grip_found_ratio': grip_found_ratio,
+                           'ratio_grip_switch': ratio_grip_switch,
+                           
+                           'task_grip_idenfication_successful': task_grip_idenfication_successful,
+                        #    'task_grip_idenfication_successful_distance': task_grip_idenfication_successful_met['distance'],
+                        #     'task_grip_idenfication_successful_distance_derivative': task_grip_idenfication_successful_met['distance_derivative'],
+                        #     'task_grip_idenfication_successful_impacts': task_grip_idenfication_successful_met['impacts'],
+                        #     'task_grip_idenfication_successful_future_distance': task_grip_idenfication_successful_met['future_distance'],
+                        #     'task_grip_idenfication_successful_max_metric': task_grip_idenfication_successful_met['max_metric'],
+                           
+                           'max_velocity': max_velocity,
+                           'min_velocity': min_velocity,
+                           'delta_velocity': delta_velocity,
+                           'velocity_threshold_beginning': velocity_threshold_beginning,
+                            'velocity_threshold_end': velocity_threshold_end,
+                            
+                           'trial_duration': trial_duration,
+                           'movement_duration': movement_duration,
+                           'begin_movement_timestamp': begin_movement_timestamp,
+                           'achievable_timestamp': achievable_timestamp,
+                            'end_movement_timestamp': end_movement_timestamp,  
+                           'grip_found_margin': grip_found_margin,
+                            'grip_found_delay': grip_found_delay,
+                            
+                            'target_found_timestamp_global': first_target_found_timestamp,
+                            'target_found_timestamp_distance': first_target_found_timestamp_met['distance'],
+                            'target_found_timestamp_distance_derivative': first_target_found_timestamp_met['distance_derivative'],
+                            'target_found_timestamp_impacts': first_target_found_timestamp_met['impacts'],
+                            'target_found_timestamp_future_distance': first_target_found_timestamp_met['future_distance'],
+                            'target_found_timestamp_max_metric': first_target_found_timestamp_met['max_metric'],
+                            'first_grip_found': first_grip_found_timestamp, 
+                            
+                            'target_found_index_global' : idx_first_target_found,
+                            'target_found_index_distance':idx_first_target_found_met['distance'],
+                            'target_found_index_distance_derivative':idx_first_target_found_met['distance_derivative'],
+                            'target_found_index_impacts':idx_first_target_found_met['impacts'],
+                            'target_found_index_future_distance':idx_first_target_found_met['future_distance'],
+                            'target_found_index_max_metric':idx_first_target_found_met['max_metric'],
+                            
+                           'target_found_margin': target_found_margin,         
+                           'target_found_delay': target_found_delay,   
+                           'target_found_margin_distance': target_found_margin_met['distance'],              
+                           'target_found_delay_distance': target_found_delay_met['distance'],
+                           'target_found_margin_future_distance': target_found_margin_met['future_distance'],              
+                           'target_found_delay_future_distance': target_found_delay_met['future_distance'],
+                           'target_found_margin_distance_derivative': target_found_margin_met['distance_derivative'],              
+                           'target_found_delay_distance_derivative': target_found_delay_met['distance_derivative'],
+                            'target_found_margin_max_metric': target_found_margin_met['max_metric'],
+                            'target_found_delay_max_metric': target_found_delay_met['max_metric'],   
+                           'target_found_margin_impacts': target_found_margin_met['impacts'],              
+                           'target_found_delay_impacts': target_found_delay_met['impacts'],
+                           
+                        #    'grip_found_margin_distance': grip_found_margin_met['distance'],
+                        #     'grip_found_delay_distance': grip_found_delay_met['distance'],                            
+                        #    'grip_found_margin_future_distance': grip_found_margin_met['future_distance'],
+                        #     'grip_found_delay_future_distance': grip_found_delay_met['future_distance'],                            
+                        #    'grip_found_margin_distance_derivative': grip_found_margin_met['distance_derivative'],
+                        #     'grip_found_delay_distance_derivative': grip_found_delay_met['distance_derivative'],                        
+                        #    'grip_found_margin_impacts': grip_found_margin_met['impacts'],
+                        #     'grip_found_delay_impacts': grip_found_delay_met['impacts'],                            
+                        #     'grip_found_margin_max_metric': grip_found_margin_met['max_metric'],
+                        #     'grip_found_delay_max_metric': grip_found_delay_met['max_metric'],
+                            
+                            'resting_time': resting_time,
+                           'time_to_target_rmse': time_to_target_rmse
+                           }
+        
+        return evaluation_data
+    
+    def plot_target_data(target_data, hand, save_path, device_ID, target,mode):     # 16_05_save
+        if 'most_probable_target' not in target_data.columns:
+            return
+        fig, axs = plt.subplots(8, 1, figsize=(3., 8.), sharex=True)
+        plt.rcParams["font.family"] = "Times New Roman"
+        plt.rcParams["font.size"] = 8  
+        time = target_data['timestamp']
+        x = time
+        
+        #scalar velocity
+        if 'hand_scalar_velocity' in target_data.columns:
+            y = target_data['hand_scalar_velocity']
+            axs[0].plot(x, y, label='scalar velocity', color='black')
+            # axs[0].set_title('scalar velocity')
+            # axs[0].set_xlabel('time')
+            axs[0].set_ylabel('Hand scalar \nvelocity (mm/s)')
+            # axs[0].legend()
+        #distances
+        
+        expected_objects = sc.RigidObject.LABEL_EXPE_NAMES
+        legend_handles = []
+        for obj in expected_objects.values():
+            # transform first letter to uppercase
+            lab_obj = obj[0].upper() + obj[1:]
+            legend_handles.append(mlines.Line2D([], [], color=RigidObject._TARGETS_COLORS_DICT[obj], label=lab_obj))  
+        # metrics = [ 'distance_derivative', 'impacts', 'distance', 'future_distance', 'max_metric','global']
+        # metrics_for_labels = ['Distance derivative', 'Impacts', 'Distance', 'Future distance','Maximum', 'Global']
+        metrics = [ 'distance_derivative', 'impacts', 'distance', 'future_distance','global']
+        metrics_for_labels = ['Distance derivative', 'Impacts', 'Distance', 'Future distance', 'Global']
+        for i, metric in enumerate(metrics):
+            row = i + 1
+            for obj in expected_objects.values():
+                col_title = f'{metric}_confidence_{obj}'
+                if col_title not in target_data.columns:
+                    continue
+                x = time
+                y = target_data[col_title]
+                axs[row].plot(x, y, label=obj, color=RigidObject._TARGETS_COLORS_DICT[obj])
+            axs[row].set_ylabel(f'{metrics_for_labels[i]}\nconfidence')
+            if row > 1:
+                axs[row].set_ylim([0, 1])
+                
+        ### TGARGET IDENTIFICATION
+        target_time = target_data['most_probable_target']
+        target_time_value = []
+        for i in range(len(time)):
+            found = False
+            for k, ob in enumerate(expected_objects.keys()):
+                if target_time[i] == expected_objects[ob]:
+                    target_time_value.append(k+1)
+                    found = True
+            if not found:
+                target_time_value.append(target_time[i])
+        
+        width = 2
+        current_target = target_time_value[0]
+        current_time=[]
+        current_target_time_value=[]
+        if target_time[0] in RigidObject._TARGETS_COLORS_DICT.keys():
+            current_color = RigidObject._TARGETS_COLORS_DICT[target_time[0]]
+        else:
+            current_color = 'black'
+        
+        for i in range(len(time)):
+            print(f'target_time_value[{i}]: {target_time_value[i]}')
+            print(f'current_target: {current_target}')
+            if target_time_value[i] == current_target:
+                current_time.append(time[i])
+                current_target_time_value.append(target_time_value[i])
+            else:
+                print('next target time part')
+                current_target = target_time_value[i]
+                axs[6].plot(current_time, current_target_time_value, drawstyle='steps-post', color=current_color, linewidth=width)
+                if target_time[i] in RigidObject._TARGETS_COLORS_DICT.keys():
+                    current_color = RigidObject._TARGETS_COLORS_DICT[target_time[i]]
+                else:
+                    current_color = 'black'
+                print('plot target time part')
+                current_time = [time[i]]
+                current_target_time_value = [target_time_value[i]]
+        axs[6].plot(current_time, current_target_time_value, drawstyle='steps-post', color=current_color, linewidth=width)
+        print('plot last target time part')
+            
+            
+        # axs[6].plot(time, target_time_value , drawstyle='steps-post', color='black')
+        axs[6].set_yticks([1,2,3,4], expected_objects.values())
+        axs[6].set_ylim([0, 5])
+        axs[6].set_ylabel('Most probable \ntarget')
+        
+        # 
+        Ticks = expected_objects.values()
+        # set first letter to uppercase
+        Ticks = [obj[0].upper() + obj[1:] for obj in Ticks]
+        axs[6].set_yticks([1,2,3,4], Ticks)
+        #rotate y labels 45 degrees
+        # plt.setp(axs[6].get_yticklabels(), rotation=45, ha='right', va='center_baseline'
+        #             , rotation_mode='anchor')
+        
+        grip_time = target_data['grip']
+        grips = ['palmar', 'pinch']
+        colors = {'palmar':'blue',
+                  'pinch': 'magenta'}
+        grip_time_value = []
+        for i in range(len(grip_time)):
+            found = False
+            for k, ob in enumerate(grips):
+                if grip_time[i] == grips[k]:
+                    grip_time_value.append(k+1)
+                    found = True
+            if not found:
+                grip_time_value.append(grip_time[i])
+                
+        
+        current_grip = grip_time_value[0]
+        current_time=[]
+        current_grip_time_value=[]
+        if grip_time[0] in grips:
+            current_color = colors[grips[current_grip-1]]
+        else:
+            current_color = 'black'
+        
+        for i in range(len(time)):
+            print(f'grip_time_value[{i}]: {grip_time_value[i]}')
+            print(f'current_grip: {current_grip}')
+            if grip_time_value[i] == current_grip:
+                current_time.append(time[i])
+                current_grip_time_value.append(grip_time_value[i])
+            else:
+                print('next grip time part')
+                current_grip = grip_time_value[i]
+                axs[7].plot(current_time, current_grip_time_value, drawstyle='steps-post', color=current_color, linewidth=width)
+                if grip_time[i] in grips:
+                    current_color = colors[grips[current_grip-1]]
+                else:
+                    current_color = 'black'
+                print('plot grip time part')
+                current_time = [time[i]]
+                current_grip_time_value = [grip_time_value[i]]
+        axs[7].plot(current_time, current_grip_time_value, drawstyle='steps-post', color=current_color, linewidth=width)
+        print('plot last grip time part')
+            
+                    
+        
+        # axs[7].plot(time, grip_time_value,  drawstyle='steps-post', color='black', width=2)
+        
+        
+        tgrips = ['Palmar', 'Pinch']
+        axs[7].set_yticks([1,2], tgrips)
+        axs[7].set_ylim([0, 3])
+        axs[7].set_ylabel('Selected\ngrip')
+        
+        eval_data = Trial.evaluate_target_data(target_data, device_ID=device_ID, hand=hand, target=target, mode=mode)    
+        if eval_data is not None:
+            #get target_found_timestamps
+            tg_fd_timsps = {}
+            tg_fd_idx = {}
+            y_annot = {}
+            
+            for i, metric in enumerate(metrics):
+                print(f'tg_fd_timsps: {tg_fd_timsps}')
+                print(f'metric: {metric}')
+                tg_fd_timsps[metric] = eval_data[f'target_found_timestamp_{metric}']
+                tg_fd_idx[metric] = eval_data[f'target_found_index_{metric}']
+                tar_col_title = f'{metric}_confidence_{target}'
+                ys = target_data[tar_col_title]
+                y_annot[metric] = ys[tg_fd_idx[metric]]
+            
+            for i, metric in enumerate(metrics):
+                y_lim = axs[i+1].get_ylim()
+                delta_y = abs(y_lim[1] - y_lim[0])
+                if y_annot[metric] > y_lim[1]-delta_y/2:
+                    y_txt = y_annot[metric] - delta_y/3
+                else:
+                    y_txt = y_annot[metric] + delta_y/3
+                axs[i+1].annotate('Target found', xy=(tg_fd_timsps[metric], y_annot[metric]), xytext=(tg_fd_timsps[metric], y_txt),
+                        arrowprops=dict(facecolor='black', shrink=0.05, width=0.5, headwidth=5, headlength=5))
+            print(f'timestamps for trial {save_path}: {tg_fd_timsps}')
+                
+        fig.legend(handles=legend_handles, loc='upper center', ncol=4)
+        axs[-1].set_xlabel('Time (s)')
+        axs[-1].set_xlim([time.iloc[0], time.iloc[-1]])
+        # plt.tight_layout()
+        fig.tight_layout()
+        plt.subplots_adjust(hspace=0.2, wspace=0.1, top=0.95)
+        fig.align_ylabels()
+        if save_path is not None:
+            plt.savefig(save_path, format='eps', bbox_inches='tight')
+            plt.savefig(save_path.replace('.eps', '.png'), format='png', bbox_inches='tight')   
+            plt.savefig(save_path.replace('.eps', '.pdf'), format='pdf', bbox_inches='tight')   
+        # plt.show()
+            
+        
+    
+    def evaluate_target_data_new(target_data, device_ID = None, hand = None ):     
+        
+        print(f"evaluate target_data: {target_data}")
+        ## TRIAL METADATA
+        trial_duration = target_data['timestamp'].iloc[-1] - target_data['timestamp'].iloc[0]
+        trial_nb_frames = len(target_data)
+        if device_ID is not None:
+            if device_ID == '1944301011EA1F1300':
+                cam_position = 'right'
+            elif device_ID == '19443010910F481300':
+                cam_position = 'left'
+        if hand is not None:
+            if hand == cam_position:
+                cam_hand_position = 'same'
+            else:
+                cam_hand_position = 'opposite'                
+                
+        
+        ## HAND DETECTION
+        nb_hand_found = target_data['task_hand_found'].sum()
+        ratio_hand_found = nb_hand_found / trial_nb_frames
+        
+        #find the first True value in the 'task_hand_found' column
+        # idx_first_hand_found = target_data['task_hand_found'].idxmax()
+        # first_hand_found_timestamp = target_data.loc[idx_first_hand_found, 'timestamp']
+        
+        # find the index at wich the hand was detected consecutively for min_number_consecutive_hand_detections frames
+        min_number_consecutive_hand_detections = 3
+        nb_consecutive_hand_detections = 0
+        idx_first_consecutive_hand_found = trial_nb_frames-1
+        for index, row in target_data.iterrows():
+            if row['task_hand_found'] == True:
+                nb_consecutive_hand_detections += 1
+            else:
+                nb_consecutive_hand_detections = 0
+            if nb_consecutive_hand_detections == min_number_consecutive_hand_detections:
+                idx_first_consecutive_hand_found = index-min_number_consecutive_hand_detections+1
+                break        
+        
+        first_consecutive_hand_found_timestamp = target_data.loc[idx_first_consecutive_hand_found, 'timestamp']
+        
+        #check if the hand was continuously estimated
+        is_hand_estimation_continuous = target_data.loc[idx_first_consecutive_hand_found:,'task_hand_found'].all()
+        
+        ## OBJECT DETECTION
+        
+        nb_object_found = target_data['task_object_found'].sum()
+        ratio_object_found = target_data['task_object_found'].sum() / trial_nb_frames
+        
+        #find the first True value in the 'task_object_found' column
+        # idx_first_object_found = target_data['task_object_found'].idxmax()
+        # first_object_found_timestamp = target_data.loc[idx_first_object_found, 'timestamp']
+        
+        # find the index at wich the object was detected consecutively for min_number_consecutive_object_detections frames
+        idx_first_consecutive_object_found = trial_nb_frames-1
+        min_number_consecutive_object_detections = 3
+        nb_consecutive_object_detections = 0
+        for index, row in target_data.iterrows():
+            if row['task_object_found'] == True:
+                nb_consecutive_object_detections += 1
+            else:
+                nb_consecutive_object_detections = 0
+            if nb_consecutive_object_detections == min_number_consecutive_object_detections:
+                idx_first_consecutive_object_found = index-min_number_consecutive_object_detections+1
+                break
+        first_consecutive_object_found_timestamp = target_data.loc[idx_first_consecutive_object_found, 'timestamp']
+        
+        #check the column 'task_object_estimation_continuous' to see if the object was continuously estimated
+        is_object_estimation_continuous = target_data.loc[idx_first_consecutive_object_found:,'task_object_found'].all()
+        
+        ## TRIAL VALIDATION
+        
+        # achievable_index = max(idx_first_hand_found, idx_first_object_found)
+        achievable_index = max(idx_first_consecutive_hand_found, idx_first_consecutive_object_found)
+        if achievable_index == trial_nb_frames-1:
+            return None
+        achievable_timestamp = target_data.loc[achievable_index, 'timestamp']
+        achievable_time = trial_duration - achievable_timestamp 
+        nb_achievable_task_detections = trial_nb_frames - achievable_index
+        ratio_achievable_task_detections = nb_achievable_task_detections / trial_nb_frames
+
+        # check hand detection after achievable_index
+        max_nb_consecutive_failed_hand_detections = 3
+        too_many_consecutive_failed_hand_detections = False
+        nb_consecutive_failed_hand_detections =0
+        for index in range(achievable_index, trial_nb_frames):
+            row = target_data.iloc[index]
+            if row['task_hand_found'] == True :
+                nb_consecutive_failed_hand_detections = 0
+            else:
+                nb_consecutive_failed_hand_detections += 1
+            if nb_consecutive_failed_hand_detections > max_nb_consecutive_failed_hand_detections:
+                too_many_consecutive_failed_hand_detections = True
+                break
+        
+        # check object detection after achievable_index
+        max_nb_consecutive_failed_object_detections = 3
+        too_many_consecutive_failed_object_detections = False
+        nb_consecutive_failed_object_detections = 0
+        for index in range(achievable_index, trial_nb_frames):
+            row = target_data.iloc[index]
+            if row['task_object_found'] == True :
+                nb_consecutive_failed_object_detections = 0
+            else:
+                nb_consecutive_failed_object_detections += 1
+            if nb_consecutive_failed_object_detections > max_nb_consecutive_failed_object_detections:
+                too_many_consecutive_failed_object_detections = True
+                break
+        
+        # define the minimum ratio of hand and object found to consider the trial valid
+        min_ratio_hand_found = 0.5
+        min_ratio_object_found = 0.5
+        min_ratio_achievable_task_detections = 0.4
+        min_achievable_time = 0.5
+        
+        hand_found_ok = ratio_hand_found > min_ratio_hand_found
+        object_found_ok = ratio_object_found > min_ratio_object_found
+        achievable_task_detections_ok = ratio_achievable_task_detections > min_ratio_achievable_task_detections
+        achievable_time_absolute_ok = achievable_time > min_achievable_time
+        achievable_time_relative_ok = achievable_time > 0.5 * trial_duration
+        
+        # is_trial_valid =  hand_found_ok and object_found_ok and achievable_task_detections_ok and achievable_time_ok and not too_many_consecutive_failed_hand_detections and not too_many_consecutive_failed_object_detections
+        # is_trial_valid = (achievable_time_absolute_ok or achievable_time_relative_ok) and not too_many_consecutive_failed_hand_detections and not too_many_consecutive_failed_object_detections
+        is_trial_valid = ratio_hand_found > 0.7 and ratio_object_found > 0.9 and not too_many_consecutive_failed_hand_detections and not too_many_consecutive_failed_object_detections
+
+        not_valid_reasons = []
+        valid_reasons = []
+        
+        # if not hand_found_ok:
+        #     not_valid_reasons.append('hand not found enough')
+        # else:
+        #     valid_reasons.append('hand found enough')
+            
+        # if not object_found_ok:
+        #     not_valid_reasons.append('object not found enough')
+        # else:
+        #     valid_reasons.append('object found enough')
+        
+        if not achievable_time_absolute_ok:
+            not_valid_reasons.append('achievable absolute time not enough')
+        else:
+            valid_reasons.append('achievable absolute time enough')
+        
+        if not achievable_time_relative_ok:
+            not_valid_reasons.append('achievable relative time not enough')
+        else:
+            valid_reasons.append('achievable relative time enough')
+        
+        # if not achievable_task_detections_ok:
+        #     not_valid_reasons.append('not enough achievable task detections')
+        # else:
+        #     valid_reasons.append('enough achievable task detections')
+        
+        if too_many_consecutive_failed_hand_detections:
+            not_valid_reasons.append('too many consecutive failed hand detections')
+        else:
+            valid_reasons.append('not too many consecutive failed hand detections')
+            
+        if too_many_consecutive_failed_object_detections:
+            not_valid_reasons.append('too many consecutive failed object detections')
+        else:
+            valid_reasons.append('not too many consecutive failed object detections')
+        
+        
+        # create a new column 'task_estimation_achievable' with False before achievable_index and True after
+        target_data['task_estimation_achievable'] = False
+        target_data.loc[achievable_index:, 'task_estimation_achievable'] = True
+              
+        ## TARGET IDENTIFICATION
+        
+        #find the first True value in the 'task_object_found' column
+        idx_first_target_found = target_data['task_target_found'].idxmax() 
+        first_target_found_timestamp = target_data.loc[idx_first_target_found, 'timestamp']
+        target_found_delay = first_target_found_timestamp - first_consecutive_hand_found_timestamp
+        
+        #count the number of True values in the 'task_object_found' column
+        nb_target_found = target_data['task_target_found'].sum()
+        
+        # compute the ratio of target found
+        target_found_ratio = nb_target_found / nb_achievable_task_detections
+        
+        # count the number of False values in the 'task_object_found' column after the first True value
+        target_data_after_first_target_found = target_data.loc[idx_first_target_found:, 'task_target_found']
+        ratio_target_switch = (len(target_data_after_first_target_found) - target_data_after_first_target_found.sum())/len(target_data_after_first_target_found)
+        task_target_idenfication_successful = ratio_target_switch < 0.3
+        
+
+        
+        ## GRIP IDENTIFICATION
+        
+        #find the first True value in the 'task_grip_found' column
+        first_grip_found = target_data['task_grip_found'].idxmax() 
+        first_grip_found_timestamp = target_data.loc[first_grip_found, 'timestamp']
+        grip_found_delay = first_grip_found_timestamp - first_consecutive_hand_found_timestamp
+        
+        #count the number of True values in the 'task_grip_found' column
+        nb_grips_found = target_data['task_grip_found'].sum()
+        
+        #compute the ratio of grip found
+        grip_found_ratio = nb_grips_found / nb_achievable_task_detections
+        
+        # count the number of False values in the 'task_grip_found' column after the first True value
+        after_first_grip_found = target_data.loc[first_grip_found:, 'task_grip_found']   
+        ratio_grip_switch = (len(after_first_grip_found) - after_first_grip_found.sum())/len(after_first_grip_found)
+        task_grip_idenfication_successful = ratio_grip_switch < 0.3
+        
+        ## KINEMATIC DATA
+        print(f"target_data: {target_data}")
+        print(f"target_data.columns: {target_data.columns}")
+        print(f'target_data["hand_scalar_velocity"]: {target_data["hand_scalar_velocity"]}')
+        # get maximum velocity value and index in 'hand_scalar_velocity' column
+        idx_max_velocity = target_data['hand_scalar_velocity'].idxmax()
+        max_velocity = target_data.loc[idx_max_velocity, 'hand_scalar_velocity']
+        
+        target_data_after_max_vel = target_data[idx_max_velocity:]
+        
+        # get the minimum value and index in 'hand_scalar_velocity' column after the maximum velocity
+        idx_min_velocity = target_data_after_max_vel['hand_scalar_velocity'].idxmin()
+        min_velocity = target_data_after_max_vel.loc[idx_min_velocity, 'hand_scalar_velocity']
+        
+        delta_velocity = max_velocity - min_velocity
+        min_vel_ratio = 0.1
+        min_velocity_threshold = min_velocity + min_vel_ratio * delta_velocity
+        
+        # find the first index where the velocity is below the threshold
+        idx_end_movement = target_data_after_max_vel['hand_scalar_velocity'].lt(min_velocity_threshold).idxmax()
+        end_movement_timestamp = target_data.loc[idx_end_movement, 'timestamp']
+        resting_time = trial_duration - end_movement_timestamp
+        
+        
+        
+        
+        ## TIME TO TARGET ESTIMATION
+        
+        # get sub-df with only the rows from the first target found
+        target_data_after_first_target_found = target_data.loc[idx_first_target_found:]
+        idx_end_movement_after_target = idx_end_movement - idx_first_target_found
+        print(f"idx_end_movement_after_target: {idx_end_movement_after_target}")
+        print(f"len(target_data_after_first_target_found): {len(target_data_after_first_target_found)}")
+        
+        na_values = [rt.NO_SIGN_SWITCH, rt.NO_POLY_FIT, rt.NO_REAL_POSITIVE_ROOT]
+        for index, row in target_data_after_first_target_found.iterrows():
+            if row['estimated_target_time_to_impact'] in na_values:
+                target_data_after_first_target_found.loc[index, 'estimated_target_time_to_impact'] = np.nan
+        
+        # add a new column 'time_to_target' with the time to target, compute the difference between the timestamp and the timestamp of the last row
+        target_data_after_first_target_found['time_to_target'] = target_data_after_first_target_found['timestamp'] - target_data_after_first_target_found['timestamp'].iloc[idx_end_movement_after_target]
+        
+        #check
+        
+        # add a new column 'time_to_target_error' with the difference between the time to target estimation and the actual time to target
+        target_data_after_first_target_found['time_to_target_error'] = target_data_after_first_target_found['time_to_target'] - target_data_after_first_target_found['estimated_target_time_to_impact']
+        
+        # compute the rmse of the time to target estimation
+        time_to_target_rmse = np.sqrt(np.mean(target_data_after_first_target_found['time_to_target_error']**2))
+        
+        evaluation_data = {'cam_hand_position': cam_hand_position,
+                           'trial_nb_frames': trial_nb_frames,
+                           'trial_nb_achievable_task_detections': nb_achievable_task_detections,
+                           
+                           'idx_first_hand_found': idx_first_consecutive_hand_found,
+                           'nb_hand_found': nb_hand_found,
+                           'ratio_hand_found': ratio_hand_found,
+                           'is_hand_estimation_continuous': is_hand_estimation_continuous,
+                           
+                           'idx_first_object_found': idx_first_consecutive_object_found,
+                           'nb_object_found': nb_object_found,
+                           'ratio_object_found': ratio_object_found,
+                           'is_object_estimation_continuous': is_object_estimation_continuous,
+                           
+                           'trial_duration': trial_duration,
+                           'first_hand_found': first_consecutive_hand_found_timestamp,
+                           'first_object_found': first_consecutive_object_found_timestamp,                           
+                           'first_target_found': first_target_found_timestamp, 
+                           'first_grip_found': first_grip_found_timestamp, 
+                           'target_found_delay': target_found_delay,
+                            'grip_found_delay': grip_found_delay,
+                           
+                           'is_trial_valid' : is_trial_valid, 
+                           'not_valid_reasons': not_valid_reasons,
+                           'valid_reasons': valid_reasons,
+                           
+                           'nb_target_found': nb_target_found, 
+                           'target_found_ratio': target_found_ratio, 
+                           'ratio_target_switch': ratio_target_switch, 
+                           'task_target_idenfication_successful': task_target_idenfication_successful,
+                           
+                           'nb_grips_found': nb_grips_found,
+                           'grip_found_ratio': grip_found_ratio,
+                           'ratio_grip_switch': ratio_grip_switch,
+                           'task_grip_idenfication_successful': task_grip_idenfication_successful,
+                           
+                           'max_velocity': max_velocity,
+                           'min_velocity': min_velocity,
+                           'delta_velocity': delta_velocity,
+                            'min_velocity_threshold': min_velocity_threshold,
+                            'end_movement_timestamp': end_movement_timestamp,
+                            'resting_time': resting_time,
+                           'time_to_target_rmse': time_to_target_rmse
+                           }
+        
+        return evaluation_data
+        
+    def analyse_old(self, experiment_analyser):
         if not self.was_replayed():
             print(f'Trial {self.label} not replayed. This trial cannot be analysed and will be skipped.')
             return
@@ -1552,11 +3469,31 @@ class Trial:
         for hand_id, hand_data in self.hands_data.items():
             hand_data = hand_data.drop_duplicates(subset=['Timestamps'])
             hand_data.to_csv(os.path.join(self.replay_path, f"{self.label}_cam_{device_id}_{hand_id}_traj.csv"), index=False)
+            
         for object_id, object_data in self.objects_data.items():
             object_data = object_data.drop_duplicates(subset=['Timestamps'])
             object_data.to_csv(os.path.join(self.replay_path, f"{self.label}_cam_{device_id}_{object_id}_traj.csv"),index=False)
+        
+        # write main_data to csv file
         main_data = self.main_data.drop_duplicates(subset=['Timestamps'])
         main_data.to_csv(os.path.join(self.replay_path, f"{self.label}_cam_{device_id}_main.csv"), index=False)
+        
+        # write replay_monitoring to csv file
+        self.replay_monitoring.to_csv(os.path.join(self.replay_path, f"{self.label}_cam_{device_id}_monitoring.csv"), index=False)
+        
+        # save the overlayed video
+        overlayed_video_path = os.path.join(self.replay_path, f"{self.label}_cam_{device_id}_overlayed_video.avi")
+        fps = 30
+        res = self.saved_imgs[0].shape[:2][::-1]
+        out = cv2.VideoWriter(overlayed_video_path, self.fourcc, fps, res)
+        for img in self.saved_imgs:
+            out.write(img)
+        out.release()
+        
+        # save the replay data dictionary to a pkl file
+        replay_data_path = os.path.join(self.replay_path, f"{self.label}_cam_{device_id}_replay_data.pkl")
+        with open(replay_data_path, 'wb') as f:
+            pickle.dump(self.replay_data_dict, f)
     
     def read_replay_data(self, device_id):
         # list all files from the trial folder, files only, that end with hand_traj.csv
@@ -1620,29 +3557,28 @@ class Trial:
         return text
         
     def get_instructions_colored(self):
-        #TODO : adapt to the new instructions format
+        #TODO : add language selection
         print(f'Combination: {self.combination}')
-        # mov_type = self.combination[self.combination_header[self.movement_type_ind]]
-        # obj = self.combination[self.combination_header[self.obj_ind]]
-        # hand = self.combination[self.combination_header[self.hand_ind]]
-        # grip = self.combination[self.combination_header[self.grip_ind]]
-        # intro = f" \n \n  \n \n  \n{self.instructions['intro']} \n \n \n"
-        # t_obj = f"\t {self.instructions['object_intro']} "
-        # t_hand = f"\t {self.instructions['hand_intro']} "
-        # t_grip = f"\t {self.instructions['grip_intro']} "
-        # t_obj_c = f"{self.instructions[obj]} \n \n"
-        # t_hand_c = f"{self.instructions[hand]} \n \n"
-        # t_grip_c = f"{self.instructions[grip]} \n \n"
-        # t_mov_c = f"\t {self.instructions[mov_type]} \n \n"
-        # text = [(intro, "intro"),
-        #         (t_mov_c, "mov_type"),
-        #         (t_hand,"normal"),
-        #         (t_hand_c, "hand"),
-        #         (t_grip, "normal"),
-        #         (t_grip_c, "grip"),
-        #         (t_obj, "normal"),
-        #         (t_obj_c, "object")]
-        text = [(f"INSTRUCTIONS", "intro")]
+        mov_type = self.combination[self.combination_header[self.movement_type_ind]]
+        obj = self.combination[self.combination_header[self.obj_ind]]
+        hand = self.combination[self.combination_header[self.hand_ind]]
+        grip = self.combination[self.combination_header[self.grip_ind]]
+        intro = f" \n \n  \n \n  \n{self.instructions['intro']} \n \n \n"
+        t_obj = f"\t {self.instructions['object_intro']} "
+        t_hand = f"\t {self.instructions['hand_intro']} "
+        t_grip = f"\t {self.instructions['grip_intro']} "
+        t_obj_c = f"{self.instructions[obj]} \n \n"
+        t_hand_c = f"{self.instructions[hand]} \n \n"
+        t_grip_c = f"{self.instructions[grip]} \n \n"
+        t_mov_c = f"\t {self.instructions[mov_type]} \n \n"
+        text = [(intro, "intro"),
+                (t_mov_c, "mov_type"),
+                (t_hand,"normal"),
+                (t_hand_c, "hand"),
+                (t_grip, "normal"),
+                (t_grip_c, "grip"),
+                (t_obj, "normal"),
+                (t_obj_c, "object")]
                 
         return text
     def get_instructions_colored2(self):
@@ -1688,4 +3624,4 @@ class ProgressDisplay(ttk.Labelframe):
         if current_item is not None:
             self.current_item_text= current_item
         self.update()
-
+        

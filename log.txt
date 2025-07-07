@@ -1,0 +1,1413 @@
+[19443010910F481300] [3.3] [1.038] [ColorCamera(2)] [warning] Unsupported resolution set for detected camera IMX378/214, needs 1080_P / 4_K / 12_MP. Defaulting to 1080_P
+Depth FPS: 59
+RGB-Depth latency: -17.4 ms
+Depth FPS: 59
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: -34.0 ms
+RGB FPS: 60
+RGB-Depth latency: -17.4 ms
+RGB FPS: 60
+RGB-Depth latency: -0.7 ms
+RGB FPS: 58
+RGB-Depth latency: 16.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 16.3 ms
+Depth FPS: 59
+RGB FPS: 58
+RGB-Depth latency: 16.6 ms
+RGB FPS: 60
+RGB-Depth latency: 33.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 33.5 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 33.5 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 33.5 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 33.5 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 33.4 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 33.4 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 33.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 33.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 33.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 33.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 33.3 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 50.0 ms
+RGB FPS: 60
+RGB-Depth latency: 66.6 ms
+Depth FPS: 60
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 50.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 50.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 50.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 50.0 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 66.7 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 66.7 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 66.7 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 66.7 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 66.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 66.6 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 66.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 66.6 ms
+Depth FPS: 60
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 66.6 ms
+RGB FPS: 60
+RGB-Depth latency: 83.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 83.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 83.3 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 99.9 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.4 ms
+Depth FPS: 60
+RGB FPS: 20
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 60
+Depth FPS: 59
+RGB-Depth latency: 100.0 ms
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 19
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 60
+Depth FPS: 59
+RGB-Depth latency: 116.6 ms
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 59
+Depth FPS: 59
+RGB-Depth latency: 100.1 ms
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 20
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 29
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 29
+RGB FPS: 30
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+RGB FPS: 29
+Depth FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+Depth FPS: 29
+RGB FPS: 30
+RGB-Depth latency: 133.3 ms
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 149.9 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 20
+RGB-Depth latency: 183.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 183.3 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 166.6 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+RGB FPS: 29
+Depth FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.4 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 149.9 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 60
+Depth FPS: 29
+RGB-Depth latency: 133.3 ms
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 29
+Depth FPS: 60
+RGB-Depth latency: 116.6 ms
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 29
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 116.7 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.2 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 116.7 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 100.0 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.5 ms
+Depth FPS: 60
+RGB FPS: 59
+Depth FPS: 59
+RGB-Depth latency: 100.0 ms
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+RGB FPS: 60
+Depth FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.1 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 166.6 ms
+Depth FPS: 20
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+RGB FPS: 60
+Depth FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 29
+RGB FPS: 30
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 20
+RGB FPS: 59
+RGB-Depth latency: 100.0 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+Depth FPS: 59
+RGB-Depth latency: 100.0 ms
+RGB FPS: 29
+Depth FPS: 60
+RGB-Depth latency: 116.6 ms
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+Depth FPS: 60
+RGB-Depth latency: 116.6 ms
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+RGB FPS: 60
+Depth FPS: 60
+RGB-Depth latency: 133.3 ms
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+Depth FPS: 29
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 166.6 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 166.7 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 19
+RGB FPS: 30
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.2 ms
+Depth FPS: 60
+RGB FPS: 60
+Depth FPS: 59
+RGB-Depth latency: 116.6 ms
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 20
+RGB-Depth latency: 166.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 29
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 166.6 ms
+Depth FPS: 20
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+Depth FPS: 59
+RGB-Depth latency: 133.3 ms
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 59
+Depth FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 29
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 166.7 ms
+Depth FPS: 29
+RGB FPS: 30
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 166.6 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 166.6 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 166.6 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 150.0 ms
+Depth FPS: 19
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+RGB FPS: 59
+Depth FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 59
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 133.3 ms
+Depth FPS: 59
+RGB FPS: 30
+RGB-Depth latency: 150.0 ms
+Depth FPS: 60
+RGB FPS: 60
+RGB-Depth latency: 150.0 ms
+Depth FPS: 29
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 30
+RGB FPS: 60
+RGB-Depth latency: 116.6 ms
+Depth FPS: 59
+RGB FPS: 59
+RGB-Depth latency: 116.6 ms
+Depth FPS: 60
+RGB FPS: 29
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+RGB FPS: 59
+RGB-Depth latency: 133.3 ms
+Depth FPS: 60
+Depth FPS: 60

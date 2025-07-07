@@ -96,46 +96,45 @@ class ExperimentInterface:
         separator_path = tk.Canvas(self.root, height=1, relief=tk.SUNKEN, bg="#666666")
         separator_path.pack(fill=tk.X, padx=20, pady=10)
 
-    def build_experimental_parameters_layout(self):
-        ### EXPERIMENT PARAMETERS
-        self.parameters_frame = ttk.Frame(self.session_frame)
-        # add frame to self.session_frame, spanning 2 columns
-        self.parameters_frame.grid(row=1, columnspan=2, pady=10)
+    # def build_experimental_parameters_layout(self):
+    #     ### EXPERIMENT PARAMETERS
+    #     self.parameters_frame = ttk.Frame(self.session_frame)
+    #     # add frame to self.session_frame, spanning 2 columns
+    #     self.parameters_frame.grid(row=1, columnspan=2, pady=10)
         
-        start_row = 0
+    #     start_row = 0
 
-        objects_label = ttk.Label(self.parameters_frame, text="Distances")
-        objects_label.grid(row = start_row + 0, column=0, padx=10)
+    #     objects_label = ttk.Label(self.parameters_frame, text="Distances")
+    #     objects_label.grid(row = start_row + 0, column=0, padx=10)
 
-        self.entry_list_objects = ttk.Entry(self.parameters_frame)
-        self.entry_list_objects.grid(row = start_row + 0, column=1, padx=10)
+    #     self.entry_list_objects = ttk.Entry(self.parameters_frame)
+    #     self.entry_list_objects.grid(row = start_row + 0, column=1, padx=10)
 
-        hands_label = ttk.Label(self.parameters_frame, text="Angles")
-        hands_label.grid(row = start_row + 0, column=2, padx=10)
+    #     hands_label = ttk.Label(self.parameters_frame, text="Angles")
+    #     hands_label.grid(row = start_row + 0, column=2, padx=10)
 
-        self.entry_list_hands = ttk.Entry(self.parameters_frame)
-        self.entry_list_hands.grid(row = start_row + 0, column=3, padx=10)
+    #     self.entry_list_hands = ttk.Entry(self.parameters_frame)
+    #     self.entry_list_hands.grid(row = start_row + 0, column=3, padx=10)
 
 
-        # repetition_frame = ttk.Frame(self.session_frame)
-        # repetition_frame.grid(row=start_row+2, columnspan=2)
+    #     # repetition_frame = ttk.Frame(self.session_frame)
+    #     # repetition_frame.grid(row=start_row+2, columnspan=2)
 
-        nb_repetition_label = ttk.Label(self.parameters_frame, text="Number of repetitions")
-        nb_repetition_label.grid(row = start_row + 1,column=0, columnspan=2, padx=10, pady=10, sticky="E")
+    #     nb_repetition_label = ttk.Label(self.parameters_frame, text="Number of repetitions")
+    #     nb_repetition_label.grid(row = start_row + 1,column=0, columnspan=2, padx=10, pady=10, sticky="E")
 
-        self.entry_nb_repetition = ttk.Entry(self.parameters_frame)
-        self.entry_nb_repetition.grid(row = start_row + 1, column=2,columnspan=2, padx=10, pady=10, sticky="W")
+    #     self.entry_nb_repetition = ttk.Entry(self.parameters_frame)
+    #     self.entry_nb_repetition.grid(row = start_row + 1, column=2,columnspan=2, padx=10, pady=10, sticky="W")
         
-        self.parameters_list = ["Distances", "Angles", "Number of repetitions"]
-        self.parameters_entry_dict = [ self.entry_list_hands, self.entry_list_objects, self.entry_nb_repetition]
-        last_row = start_row + 3
-        return last_row
+    #     # self.parameters_list = ["Distances", "Angles", "Number of repetitions"]
+        
+    #     self.parameters_entry_dict = [ self.entry_list_hands, self.entry_list_objects, self.entry_nb_repetition]
+    #     last_row = start_row + 3
+    #     return last_row
     
     
     def build_experimental_parameters_layout_from_list(self):
         
-        self.parameters_list = self.experiment.selected_session.parameters_list
-        print(f"Parameters list: {self.parameters_list}")
         
         ### EXPERIMENT PARAMETERS
         self.parameters_frame = ttk.Frame(self.session_frame)
@@ -178,6 +177,13 @@ class ExperimentInterface:
         
     def select_session(self, selected_session):
         self.experiment.set_session(selected_session)
+        self.get_experimental_parameters()
+        
+    def get_experimental_parameters(self):
+        
+        self.params = self.experiment.get_session_experimental_parameters()
+        self.parameters_list = self.experiment.selected_session.parameters_list
+        print(f"Parameters list: {self.parameters_list}")
 
     def start(self):
         self.root.mainloop()
@@ -217,7 +223,6 @@ class ExperimentRecordingInterface(ExperimentInterface):
         if self.prepare_folder(self.experiment.get_session_path()):
             self.session_text.set(self.experiment.get_session_label())
             self.build_experimental_parameters_layout()
-            self.params = self.experiment.get_session_experimental_parameters()
             if self.params is not None:
                 self.display_session_experimental_parameters(self.params, disable=False) 
     
@@ -254,6 +259,7 @@ class ExperimentRecordingInterface(ExperimentInterface):
         self.validate_recording_parameters_button = ttk.Button(recording_frame, text="Validate recording parameters", command=self.validate_recording_options)
         self.validate_recording_parameters_button.grid(row=3, column=1, columnspan=2, padx=10, pady=10, sticky="EW")
         self.validate_recording_parameters_button.config(state="disabled")
+        
         
     
     def build_experimental_parameters_layout(self):

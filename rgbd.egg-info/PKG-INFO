@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: rgbd
+Version: 0.0.0
+Summary: ReVOLuTION
+Home-page: https://github.com/emoullet/rgbd_expe_recorder
+Author: Etienne Moullet
+Author-email: etienne.moullet@inria.fr
+License: MIT
+License-File: LICENSE

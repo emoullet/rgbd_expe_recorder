@@ -20,7 +20,7 @@ if __name__ == "__main__":
     rgbd_camera.start()
     while rgbd_camera.is_on():
         t = time.time()
-        success, img, map, rgb_timestamp, depth_timestamp = rgbd_camera.next_frame()
+        success, img, map, rgb_timestamp, depth_timestamp = rgbd_camera.get_frame()
         if not success:
             # print("Failed to get frame.")
             continue
