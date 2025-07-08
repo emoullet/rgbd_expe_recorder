@@ -3559,27 +3559,28 @@ class Trial:
     def get_instructions_colored(self):
         #TODO : add language selection
         print(f'Combination: {self.combination}')
-        mov_type = self.combination[self.combination_header[self.movement_type_ind]]
-        obj = self.combination[self.combination_header[self.obj_ind]]
-        hand = self.combination[self.combination_header[self.hand_ind]]
-        grip = self.combination[self.combination_header[self.grip_ind]]
-        intro = f" \n \n  \n \n  \n{self.instructions['intro']} \n \n \n"
-        t_obj = f"\t {self.instructions['object_intro']} "
-        t_hand = f"\t {self.instructions['hand_intro']} "
-        t_grip = f"\t {self.instructions['grip_intro']} "
-        t_obj_c = f"{self.instructions[obj]} \n \n"
-        t_hand_c = f"{self.instructions[hand]} \n \n"
-        t_grip_c = f"{self.instructions[grip]} \n \n"
-        t_mov_c = f"\t {self.instructions[mov_type]} \n \n"
-        text = [(intro, "intro"),
-                (t_mov_c, "mov_type"),
-                (t_hand,"normal"),
-                (t_hand_c, "hand"),
-                (t_grip, "normal"),
-                (t_grip_c, "grip"),
-                (t_obj, "normal"),
-                (t_obj_c, "object")]
-                
+        # mov_type = self.combination[self.combination_header[self.movement_type_ind]]
+        # obj = self.combination[self.combination_header[self.obj_ind]]
+        # hand = self.combination[self.combination_header[self.hand_ind]]
+        # grip = self.combination[self.combination_header[self.grip_ind]]
+        # intro = f" \n \n  \n \n  \n{self.instructions['intro']} \n \n \n"
+        # t_obj = f"\t {self.instructions['object_intro']} "
+        # t_hand = f"\t {self.instructions['hand_intro']} "
+        # t_grip = f"\t {self.instructions['grip_intro']} "
+        # t_obj_c = f"{self.instructions[obj]} \n \n"
+        # t_hand_c = f"{self.instructions[hand]} \n \n"
+        # t_grip_c = f"{self.instructions[grip]} \n \n"
+        # t_mov_c = f"\t {self.instructions[mov_type]} \n \n"
+        # text = [(intro, "intro"),
+        #         (t_mov_c, "mov_type"),
+        #         (t_hand,"normal"),
+        #         (t_hand_c, "hand"),
+        #         (t_grip, "normal"),
+        #         (t_grip_c, "grip"),
+        #         (t_obj, "normal"),
+        #         (t_obj_c, "object")]
+        text = [(f"INSTRUCTIONS", "intro")]
+
         return text
     def get_instructions_colored2(self):
         pass
